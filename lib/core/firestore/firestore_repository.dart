@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'repositorio.dart';
+import 'package:app_alabanzas/core/firestore/repositorio.dart';
 
 /// Implementación con Firestore de [Repositorio]. Ritmo, Artista, Canción,
 /// Miembro y Actividad exponen exactamente las mismas cinco operaciones —

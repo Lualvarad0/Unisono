@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'features/sync_local/presentation/prototipo_lider_screen.dart';
-import 'features/sync_local/presentation/prototipo_seguidor_screen.dart';
+import 'package:app_alabanzas/screens/sync_local/prototipo_lider_screen.dart';
+import 'package:app_alabanzas/screens/sync_local/prototipo_seguidor_screen.dart';
 
 /// Punto de entrada SEPARADO del de la app real (`lib/main.dart`).
 ///
