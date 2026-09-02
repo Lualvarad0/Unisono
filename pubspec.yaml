@@ -1,0 +1,66 @@
+name: app_alabanzas
+description: >
+  Unísono — cuando varias voces suenan como una sola. App offline-first
+  para equipos de alabanza: letra, acordes y tonalidades sincronizados en
+  tiempo real entre celulares, con o sin conexión a internet.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Backend / persistencia — Capa 1 (Contenido). cloud_firestore trae
+  # caché offline nativa, así que no hace falta una base de datos local
+  # aparte para ritmos/artistas/canciones/actividades.
+  firebase_core: ^3.6.0
+  cloud_firestore: ^5.4.4
+  firebase_auth: ^5.3.1
+
+  # Tipografía del sistema de diseño (Nocturne): Inter para todo el texto.
+  google_fonts: ^6.2.1
+
+  # Estado compartido entre features (repositorios, estado de sync en vivo).
+  # Se eligió Provider sobre Riverpod por simplicidad: el equipo que va a
+  # mantener este proyecto es un grupo de voluntarios, no un equipo de
+  # dev full-time, y Provider tiene menos conceptos nuevos que aprender.
+  provider: ^6.1.2
+
+  # Igualdad de valor (==, hashCode) en los modelos sin escribir boilerplate.
+  equatable: ^2.0.5
+
+  # Formateo de fechas para Actividades (ej. "domingo 6 de septiembre").
+  intl: ^0.19.0
+
+  cupertino_icons: ^1.0.8
+
+  # Capa 2 — sync en vivo sin internet (Paso 4). Fork mantenido del
+  # flutter_nearby_connections original: una sola interfaz Dart sobre
+  # Nearby Connections API (Android) y Multipeer Connectivity (iOS).
+  flutter_nearby_connections_plus: ^1.2.2
+
+  # Pide los permisos de Bluetooth/ubicación en tiempo de ejecución que
+  # Nearby Connections necesita en Android 6+ (y los granulares de
+  # Android 12+: BLUETOOTH_SCAN/ADVERTISE/CONNECT).
+  permission_handler: ^11.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+# El build.gradle publicado de flutter_nearby_connections_plus 1.2.2 usa
+# jcenter() (cerrado por Google en 2022) y un Android Gradle Plugin de
+# 2019 — no compila con las herramientas actuales. `packages/` tiene una
+# copia local con SOLO ese archivo parcheado (mismo código Dart/Kotlin, ver
+# packages/flutter_nearby_connections_plus/android/build.gradle). Esto se
+# puede sacar el día que el paquete original se actualice en pub.dev.
+dependency_overrides:
+  flutter_nearby_connections_plus:
+    path: packages/flutter_nearby_connections_plus
