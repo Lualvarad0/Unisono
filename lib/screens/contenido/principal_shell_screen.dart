@@ -23,19 +23,21 @@ class PrincipalShellScreen extends StatefulWidget {
 class _PrincipalShellScreenState extends State<PrincipalShellScreen> {
   int _indice = 0;
 
-  static const _pantallas = [
-    HomeScreen(),
-    RepertorioScreenSinAppBar(),
-    _ProximamenteScreen(titulo: 'En vivo'),
-    _ProximamenteScreen(titulo: 'Setlists'),
-    _PerfilScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    // No es `static const` porque Home necesita un callback que capture
+    // `this` (para cambiar de pestaña a "En vivo" al tocar "Modo en
+    // vivo") — el resto de las pantallas sigue siendo `const`.
+    final pantallas = [
+      HomeScreen(onModoEnVivo: () => setState(() => _indice = 2)),
+      const RepertorioScreenSinAppBar(),
+      const _ProximamenteScreen(titulo: 'En vivo'),
+      const _ProximamenteScreen(titulo: 'Setlists'),
+      const _PerfilScreen(),
+    ];
     return Scaffold(
       appBar: _indice == 0 ? AppBar(title: const Text('Unísono')) : null,
-      body: SafeArea(child: _pantallas[_indice]),
+      body: SafeArea(child: pantallas[_indice]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _indice,
         onDestinationSelected: (i) => setState(() => _indice = i),
