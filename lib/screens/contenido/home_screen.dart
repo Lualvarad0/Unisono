@@ -4,9 +4,12 @@ import 'package:provider/provider.dart';
 import 'package:app_alabanzas/core/firestore/repositorio.dart';
 import 'package:app_alabanzas/core/theme/app_theme.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
+import 'package:app_alabanzas/models/actividad.dart';
 import 'package:app_alabanzas/models/miembro.dart';
 import 'package:app_alabanzas/repositories/miembro_repository.dart';
 import 'package:app_alabanzas/models/cancion.dart';
+import 'package:app_alabanzas/screens/actividades/actividad_utils.dart';
+import 'package:app_alabanzas/screens/actividades/detalle_actividad_screen.dart';
 import 'package:app_alabanzas/screens/contenido/agregar_alabanza_screen.dart';
 import 'package:app_alabanzas/screens/contenido/repertorio_screen.dart';
 import 'package:app_alabanzas/screens/ejercicios/ejercicios_screen.dart';
@@ -15,13 +18,10 @@ import 'package:app_alabanzas/screens/notas/mis_notas_screen.dart';
 /// Pantalla 6 del prototipo. Punto de entrada después de Acceso — resumen
 /// corto del repertorio y accesos directos a lo que se usa más seguido.
 ///
-/// No incluye la tarjeta "Próximo servicio" del diseño original: esa
-/// necesita Setlists/Actividades, que todavía no se construyó (queda para
-/// esa ronda). "Modo en vivo" tampoco lleva a nada real todavía — solo
-/// cambia a la pestaña "En vivo" del shell, que hoy es un placeholder por
-/// la misma razón (el Paso 4 tiene el prototipo P2P aislado en
-/// `main_prototipo_sync_local.dart`; falta conectarlo al estado real de
-/// una canción).
+/// "Modo en vivo" todavía no lleva a nada real — solo cambia a la
+/// pestaña "En vivo" del shell, que hoy es un placeholder (el Paso 4
+/// tiene el prototipo P2P aislado en `main_prototipo_sync_local.dart`;
+/// falta conectarlo al estado real de una canción).
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.onModoEnVivo});
 
@@ -77,7 +77,9 @@ class HomeScreen extends StatelessWidget {
               );
             },
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
+          const _TarjetaProximoServicio(),
+          const SizedBox(height: 4),
           StreamBuilder<List<Cancion>>(
             stream: context.read<Repositorio<Cancion>>().watchAll(),
             builder: (context, snapshot) {
@@ -197,6 +199,82 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// La próxima Actividad con fecha futura, si hay alguna — no se muestra
+/// nada si no hay ninguna cargada, en vez de simular un estado vacío
+/// falso. Solo lectura: crear/editar actividades vive en la pestaña
+/// Setlists.
+class _TarjetaProximoServicio extends StatelessWidget {
+  const _TarjetaProximoServicio();
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<Actividad>>(
+      stream: context.read<Repositorio<Actividad>>().watchAll(),
+      builder: (context, snapshot) {
+        final ahora = DateTime.now();
+        final proximas = (snapshot.data ?? const <Actividad>[])
+            .where((a) => a.fecha.isAfter(ahora))
+            .toList()
+          ..sort((a, b) => a.fecha.compareTo(b.fecha));
+        if (proximas.isEmpty) return const SizedBox.shrink();
+        final proxima = proximas.first;
+        final tema = Theme.of(context);
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radio + 4),
+              side: BorderSide(
+                color: tema.colorScheme.primary.withValues(alpha: 0.4),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'PRÓXIMO SERVICIO',
+                    style: tema.textTheme.labelSmall?.copyWith(
+                      color: tema.colorScheme.primary,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${formatearFechaActividad(proxima.fecha)} · '
+                    '${TimeOfDay.fromDateTime(proxima.fecha).format(context)}',
+                    style: tema.textTheme.titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${proxima.setlist.length} alabanzas',
+                    style: tema.textTheme.bodyMedium
+                        ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 14),
+                  OutlinedButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            DetalleActividadScreen(actividadId: proxima.id),
+                      ),
+                    ),
+                    child: const Text('Ver setlist'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

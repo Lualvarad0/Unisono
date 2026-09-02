@@ -109,7 +109,12 @@ class _AppConProviders extends StatelessWidget {
         Provider<Repositorio<Miembro>>(
           create: (context) => context.read<MiembroRepository>(),
         ),
-        Provider<Repositorio<Actividad>>(create: (_) => ActividadRepository()),
+        // ActividadRepository suma watchOrdenadasPorFecha, que no es parte
+        // del CRUD genérico — mismo patrón que CancionRepository arriba.
+        Provider<ActividadRepository>(create: (_) => ActividadRepository()),
+        Provider<Repositorio<Actividad>>(
+          create: (context) => context.read<ActividadRepository>(),
+        ),
         Provider<NotaRepository>(create: (_) => NotaRepository()),
         Provider<Repositorio<Nota>>(
           create: (context) => context.read<NotaRepository>(),
