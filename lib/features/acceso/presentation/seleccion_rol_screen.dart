@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../actividades/data/models/miembro.dart';
 import '../../actividades/data/repositories/miembro_repository.dart';
+import '../../contenido/presentation/screens/principal_shell_screen.dart';
 import '../data/services/autenticacion_service.dart';
-import 'home_placeholder_screen.dart';
 
 /// Pantalla 5 del prototipo (Acceso). Aparece una sola vez por cuenta: la
 /// primera vez que alguien inicia sesión, hay que vincular esa cuenta de
@@ -51,7 +51,7 @@ class _SeleccionRolScreenState extends State<SeleccionRolScreen> {
     await repositorio.actualizar(miembro.id, miembro.copyWith(uid: uid));
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomePlaceholderScreen()),
+      MaterialPageRoute(builder: (_) => const PrincipalShellScreen()),
     );
   }
 
@@ -66,7 +66,7 @@ class _SeleccionRolScreenState extends State<SeleccionRolScreen> {
     );
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomePlaceholderScreen()),
+      MaterialPageRoute(builder: (_) => const PrincipalShellScreen()),
     );
   }
 
@@ -84,7 +84,7 @@ class _SeleccionRolScreenState extends State<SeleccionRolScreen> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const HomePlaceholderScreen()),
+              MaterialPageRoute(builder: (_) => const PrincipalShellScreen()),
             );
           });
           return const Scaffold(body: Center(child: CircularProgressIndicator()));

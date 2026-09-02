@@ -39,7 +39,12 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
             email: _emailController.text.trim(),
             contrasena: _contrasenaController.text,
           );
-      // El StreamBuilder de SplashScreen lleva a Selección de rol solo.
+      // El StreamBuilder de SplashScreen decide la pantalla siguiente
+      // (Selección de rol) solo — pero primero hay que sacar del medio
+      // esta pantalla, que quedó apilada arriba de Splash con `push`.
+      // Si no, el cambio de Splash queda tapado por esta.
+      if (!mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } on AutenticacionExcepcion catch (e) {
       setState(() => _error = e.mensaje);
     } finally {

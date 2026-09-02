@@ -24,15 +24,23 @@ class Cancion extends Equatable {
   const Cancion({
     required this.id,
     required this.titulo,
-    required this.ritmoId,
+    this.ritmoId,
     this.artistaId,
     required this.tonoOriginal,
     required this.contenidoChordPro,
+    this.bpm,
+    this.compas,
+    this.etiquetas = const [],
   });
 
   final String id;
   final String titulo;
-  final String ritmoId;
+
+  /// Opcional: el diseño de "Agregar alabanza" usa etiquetas libres
+  /// (`etiquetas`) en vez de pedir un género fijo. `ritmoId` se conserva
+  /// para quien quiera seguir clasificando por género — `watchByRitmo`
+  /// sigue andando para las canciones que sí lo tengan.
+  final String? ritmoId;
 
   /// null = "Varios" / sin artista específico.
   final String? artistaId;
@@ -40,14 +48,27 @@ class Cancion extends Equatable {
   final String tonoOriginal;
   final String contenidoChordPro;
 
+  /// Tempo en golpes por minuto. Opcional — no todas las iglesias lo cargan.
+  final int? bpm;
+
+  /// Ej. "4/4", "6/8". Texto libre a propósito: cubre compases compuestos
+  /// sin tener que armar un enum para algo que casi nunca cambia.
+  final String? compas;
+
+  final List<String> etiquetas;
+
   factory Cancion.fromMap(String id, Map<String, dynamic> map) {
+    final etiquetasRaw = map['etiquetas'] as List<dynamic>? ?? const [];
     return Cancion(
       id: id,
       titulo: map['titulo'] as String? ?? '',
-      ritmoId: map['ritmoId'] as String? ?? '',
+      ritmoId: map['ritmoId'] as String?,
       artistaId: map['artistaId'] as String?,
       tonoOriginal: map['tonoOriginal'] as String? ?? 'C',
       contenidoChordPro: map['contenidoChordPro'] as String? ?? '',
+      bpm: (map['bpm'] as num?)?.toInt(),
+      compas: map['compas'] as String?,
+      etiquetas: etiquetasRaw.map((e) => e.toString()).toList(),
     );
   }
 
@@ -57,6 +78,9 @@ class Cancion extends Equatable {
         'artistaId': artistaId,
         'tonoOriginal': tonoOriginal,
         'contenidoChordPro': contenidoChordPro,
+        'bpm': bpm,
+        'compas': compas,
+        'etiquetas': etiquetas,
       };
 
   Cancion copyWith({
@@ -66,6 +90,9 @@ class Cancion extends Equatable {
     bool limpiarArtista = false,
     String? tonoOriginal,
     String? contenidoChordPro,
+    int? bpm,
+    String? compas,
+    List<String>? etiquetas,
   }) {
     return Cancion(
       id: id,
@@ -74,6 +101,9 @@ class Cancion extends Equatable {
       artistaId: limpiarArtista ? null : (artistaId ?? this.artistaId),
       tonoOriginal: tonoOriginal ?? this.tonoOriginal,
       contenidoChordPro: contenidoChordPro ?? this.contenidoChordPro,
+      bpm: bpm ?? this.bpm,
+      compas: compas ?? this.compas,
+      etiquetas: etiquetas ?? this.etiquetas,
     );
   }
 
@@ -83,6 +113,15 @@ class Cancion extends Equatable {
   );
 
   @override
-  List<Object?> get props =>
-      [id, titulo, ritmoId, artistaId, tonoOriginal, contenidoChordPro];
+  List<Object?> get props => [
+        id,
+        titulo,
+        ritmoId,
+        artistaId,
+        tonoOriginal,
+        contenidoChordPro,
+        bpm,
+        compas,
+        etiquetas,
+      ];
 }

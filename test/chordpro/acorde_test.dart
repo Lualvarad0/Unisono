@@ -36,6 +36,56 @@ void main() {
     });
   });
 
+  group('Acorde.parse — cifrado español', () {
+    test('notas simples se traducen a americano', () {
+      expect(Acorde.parse('Do').nota, 'C');
+      expect(Acorde.parse('Re').nota, 'D');
+      expect(Acorde.parse('Mi').nota, 'E');
+      expect(Acorde.parse('Fa').nota, 'F');
+      expect(Acorde.parse('Sol').nota, 'G');
+      expect(Acorde.parse('La').nota, 'A');
+      expect(Acorde.parse('Si').nota, 'B');
+    });
+
+    test('conserva el sufijo (menor, séptima, etc.)', () {
+      final a = Acorde.parse('Rem7');
+      expect(a.nota, 'D');
+      expect(a.sufijo, 'm7');
+      expect(a.toString(), 'Dm7');
+    });
+
+    test('sostenidos y bemoles en español', () {
+      expect(Acorde.parse('Do#').nota, 'C#');
+      expect(Acorde.parse('Sib').nota, 'Bb');
+    });
+
+    test('bajo alterado en español (Re/Fa#)', () {
+      final a = Acorde.parse('Re/Fa#');
+      expect(a.nota, 'D');
+      expect(a.bajo, 'F#');
+    });
+
+    test('no distingue mayúsculas/minúsculas', () {
+      expect(Acorde.parse('sol').nota, 'G');
+      expect(Acorde.parse('SOL').nota, 'G');
+    });
+
+    test('no confunde un acorde americano con una nota española', () {
+      // "D7" no debe leerse como "Do" + sufijo "7" — al no encontrar la
+      // "o" de "Do", tiene que caer en la rama de una sola letra.
+      final a = Acorde.parse('D7');
+      expect(a.nota, 'D');
+      expect(a.sufijo, '7');
+    });
+
+    test('se transporta igual que uno escrito en americano', () {
+      expect(
+        Acorde.parse('Sol').transponer(2).toString(),
+        Acorde.parse('G').transponer(2).toString(),
+      );
+    });
+  });
+
   group('Acorde.transponer', () {
     test('sube semitonos dentro de la escala', () {
       expect(Acorde.parse('C').transponer(2).toString(), 'D');
