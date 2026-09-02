@@ -33,5 +33,9 @@ firebase.json
 .vscode/
 *.swp
 
+# Configuración local de la sesión de desarrollo (rutas de máquina, no del
+# proyecto) — nunca se sube.
+.claude/
+
 # Coverage
 coverage/
