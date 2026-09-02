@@ -6,13 +6,14 @@ import 'package:app_alabanzas/screens/notas/mis_notas_screen.dart';
 import 'package:app_alabanzas/screens/contenido/home_screen.dart';
 import 'package:app_alabanzas/screens/contenido/repertorio_screen.dart';
 import 'package:app_alabanzas/screens/equipo/equipo_screen.dart';
+import 'package:app_alabanzas/screens/actividades/setlists_screen.dart';
 
 /// Contenedor con la barra inferior de navegación (Inicio, Repertorio, En
 /// vivo, Setlists, Perfil) — lo primero que se ve después de Acceso.
 ///
-/// "En vivo" y "Setlists" son placeholders: esas rondas de pantallas
-/// (Paso 4 ya tiene el prototipo de sync en vivo, pero falta conectarlo al
-/// estado real de una canción; Setlists no se construyó todavía).
+/// "En vivo" sigue siendo un placeholder: el Paso 4 tiene el prototipo de
+/// sync P2P aislado en `main_prototipo_sync_local.dart`, pero falta
+/// conectarlo al estado real de una canción.
 class PrincipalShellScreen extends StatefulWidget {
   const PrincipalShellScreen({super.key});
 
@@ -32,7 +33,7 @@ class _PrincipalShellScreenState extends State<PrincipalShellScreen> {
       HomeScreen(onModoEnVivo: () => setState(() => _indice = 2)),
       const RepertorioScreenSinAppBar(),
       const _ProximamenteScreen(titulo: 'En vivo'),
-      const _ProximamenteScreen(titulo: 'Setlists'),
+      const SetlistsScreen(),
       const _PerfilScreen(),
     ];
     return Scaffold(
