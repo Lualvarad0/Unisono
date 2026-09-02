@@ -1,0 +1,52 @@
+group 'com.nankai.flutter_nearby_connections'
+version '1.0-SNAPSHOT'
+
+// PARCHEADO — ver README.md del proyecto, sección "Paso 4", para el porqué.
+// El build.gradle original de flutter_nearby_connections_plus 1.2.2
+// declaraba su propio `buildscript` con Android Gradle Plugin 3.5.0 (2019)
+// y usaba `jcenter()`, que Google cerró en 2022. Ninguna herramienta
+// actual puede resolver eso. Este archivo saca ese `buildscript` propio
+// (el proyecto raíz ya provee la versión de AGP/Kotlin que corresponde) y
+// cambia `jcenter()` por `mavenCentral()`. El resto del paquete
+// (Kotlin/Dart) queda intacto.
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+android {
+    namespace 'com.nankai.flutter_nearby_connections'
+    compileSdk 34
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+    defaultConfig {
+        minSdk 21
+        targetSdk 34
+    }
+    lintOptions {
+        disable 'InvalidPackage'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+dependencies {
+    api 'com.google.android.gms:play-services-nearby:18.5.0'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'com.google.android.gms:play-services-location:17.1.0'
+    implementation 'androidx.core:core-ktx:1.9.0'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk7'
+}

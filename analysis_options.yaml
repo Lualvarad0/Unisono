@@ -1,0 +1,16 @@
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    # Plugin vendorizado (ver README, sección "Paso 4") — no es código
+    # nuestro, solo le parcheamos el build.gradle roto. No tiene sentido
+    # analizarlo con nuestras reglas de lint.
+    - packages/**
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    prefer_single_quotes: true
+    sort_child_properties_last: true
+    always_declare_return_types: true
