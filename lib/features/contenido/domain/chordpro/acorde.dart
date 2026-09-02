@@ -3,6 +3,14 @@ import 'package:equatable/equatable.dart';
 /// Un acorde individual dentro de una canción en formato ChordPro
 /// (ej. `G`, `Am7`, `F#m`, `D/F#`).
 ///
+/// Acepta la nota fundamental tanto en cifrado americano (`C`, `D`, `Em`)
+/// como en cifrado español/latino (`Do`, `Re`, `Mim`) — quien carga el
+/// repertorio escribe en el que ya conoce. Internamente todo se guarda y
+/// se muestra en americano (`nota`), que es el que usa el resto del
+/// sistema (transposición, `Detectar tonalidad`, etc.) — esto es
+/// normalización de *entrada*, no una preferencia de visualización por
+/// usuario.
+///
 /// Si el texto no matchea la forma de un acorde reconocible (ej. `N.C.`,
 /// una marca de percusión, o cualquier anotación libre), queda como
 /// `reconocido = false` y se preserva tal cual — `transponer` no le hace
@@ -35,7 +43,26 @@ class Acorde extends Equatable {
   factory Acorde.crudo(String texto) =>
       Acorde._(textoOriginal: texto, reconocido: false);
 
-  static final RegExp _notaAlInicio = RegExp(r'^([A-Ga-g])([#b])?');
+  // El orden importa: "Sol"/"Si"/etc. tienen que probarse antes que
+  // [A-Ga-g] para que "Sol" no matchee solo como si empezara con una nota
+  // suelta rara — pero como ninguna nota en español es prefijo de otra
+  // ("Do" vs "Re" vs "Mi" vs "Fa" vs "Sol" vs "La" vs "Si"), no hay
+  // ambigüedad real entre ellas ni con las americanas de una letra
+  // (p.ej. "D7" no matchea "Do" porque falta la "o").
+  static final RegExp _notaAlInicio = RegExp(
+    r'^(Do|Re|Mi|Fa|Sol|La|Si|[A-Ga-g])([#b])?',
+    caseSensitive: false,
+  );
+
+  static const _notasEspanol = {
+    'DO': 'C', 'RE': 'D', 'MI': 'E', 'FA': 'F', //
+    'SOL': 'G', 'LA': 'A', 'SI': 'B', //
+  };
+
+  static String _normalizarNota(String letra) {
+    final clave = letra.toUpperCase();
+    return _notasEspanol[clave] ?? clave;
+  }
 
   factory Acorde.parse(String texto) {
     final crudo = texto.trim();
@@ -45,14 +72,15 @@ class Acorde extends Equatable {
     final principal = _notaAlInicio.firstMatch(partes[0]);
     if (principal == null) return Acorde.crudo(crudo);
 
-    final nota = principal.group(1)!.toUpperCase() + (principal.group(2) ?? '');
+    final nota =
+        _normalizarNota(principal.group(1)!) + (principal.group(2) ?? '');
     final sufijo = partes[0].substring(principal.end);
 
     String? bajo;
     if (partes.length > 1) {
       final bajoMatch = _notaAlInicio.firstMatch(partes[1]);
       if (bajoMatch == null) return Acorde.crudo(crudo);
-      bajo = bajoMatch.group(1)!.toUpperCase() + (bajoMatch.group(2) ?? '');
+      bajo = _normalizarNota(bajoMatch.group(1)!) + (bajoMatch.group(2) ?? '');
     }
 
     return Acorde._(

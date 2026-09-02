@@ -38,8 +38,12 @@ class _LoginScreenState extends State<LoginScreen> {
             email: _emailController.text.trim(),
             contrasena: _contrasenaController.text,
           );
-      // Si funciona, el StreamBuilder de SplashScreen reacciona solo y
-      // reemplaza esta pantalla — no hace falta navegar a mano acá.
+      // El StreamBuilder de SplashScreen decide la pantalla siguiente
+      // solo, pero primero hay que sacar del medio esta pantalla, que
+      // quedó apilada arriba de Splash con `push` — si no, el cambio de
+      // Splash queda tapado por esta.
+      if (!mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } on AutenticacionExcepcion catch (e) {
       setState(() => _error = e.mensaje);
     } finally {

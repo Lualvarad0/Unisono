@@ -15,6 +15,8 @@ import 'features/contenido/data/models/ritmo.dart';
 import 'features/contenido/data/repositories/artista_repository.dart';
 import 'features/contenido/data/repositories/cancion_repository.dart';
 import 'features/contenido/data/repositories/ritmo_repository.dart';
+import 'features/notas/data/models/nota.dart';
+import 'features/notas/data/repositories/nota_repository.dart';
 
 /// Widget raíz. Registra los repositorios de la Capa 1 (Contenido) y el
 /// servicio de Acceso como providers globales: cualquier pantalla, sin
@@ -54,6 +56,10 @@ class AppAlabanzas extends StatelessWidget {
           create: (context) => context.read<MiembroRepository>(),
         ),
         Provider<Repositorio<Actividad>>(create: (_) => ActividadRepository()),
+        Provider<NotaRepository>(create: (_) => NotaRepository()),
+        Provider<Repositorio<Nota>>(
+          create: (context) => context.read<NotaRepository>(),
+        ),
       ],
       child: MaterialApp(
         title: 'Unísono',
