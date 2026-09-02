@@ -19,6 +19,8 @@ import 'package:app_alabanzas/repositories/cancion_repository.dart';
 import 'package:app_alabanzas/repositories/ritmo_repository.dart';
 import 'package:app_alabanzas/models/nota.dart';
 import 'package:app_alabanzas/repositories/nota_repository.dart';
+import 'package:app_alabanzas/models/ejercicio.dart';
+import 'package:app_alabanzas/repositories/ejercicio_repository.dart';
 // Generado por `flutterfire configure` — ver README, sección "Configurar
 // Firebase". No se comitea (está en .gitignore): cada iglesia usa su
 // propio proyecto Firebase gratuito.
@@ -111,6 +113,12 @@ class _AppConProviders extends StatelessWidget {
         Provider<NotaRepository>(create: (_) => NotaRepository()),
         Provider<Repositorio<Nota>>(
           create: (context) => context.read<NotaRepository>(),
+        ),
+        // EjercicioRepository suma marcarCompletado, que no es parte del
+        // CRUD genérico — mismo patrón que CancionRepository arriba.
+        Provider<EjercicioRepository>(create: (_) => EjercicioRepository()),
+        Provider<Repositorio<Ejercicio>>(
+          create: (context) => context.read<EjercicioRepository>(),
         ),
       ],
       child: MaterialApp(
