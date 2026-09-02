@@ -5,6 +5,7 @@ import 'package:app_alabanzas/services/autenticacion_service.dart';
 import 'package:app_alabanzas/screens/notas/mis_notas_screen.dart';
 import 'package:app_alabanzas/screens/contenido/home_screen.dart';
 import 'package:app_alabanzas/screens/contenido/repertorio_screen.dart';
+import 'package:app_alabanzas/screens/equipo/equipo_screen.dart';
 
 /// Contenedor con la barra inferior de navegación (Inicio, Repertorio, En
 /// vivo, Setlists, Perfil) — lo primero que se ve después de Acceso.
@@ -101,6 +102,14 @@ class _PerfilScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Text(usuario?.email ?? ''),
             const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const EquipoScreen()),
+              ),
+              icon: const Icon(Icons.groups_outlined),
+              label: const Text('Mi equipo'),
+            ),
+            const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const MisNotasScreen()),

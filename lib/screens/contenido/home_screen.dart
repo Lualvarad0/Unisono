@@ -8,6 +8,7 @@ import 'package:app_alabanzas/repositories/miembro_repository.dart';
 import 'package:app_alabanzas/models/cancion.dart';
 import 'package:app_alabanzas/screens/contenido/agregar_alabanza_screen.dart';
 import 'package:app_alabanzas/screens/contenido/repertorio_screen.dart';
+import 'package:app_alabanzas/screens/ejercicios/ejercicios_screen.dart';
 
 /// Pantalla 6 del prototipo. Punto de entrada después de Acceso — resumen
 /// corto del repertorio y accesos directos a lo que se usa más seguido.
@@ -99,6 +100,17 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const EjerciciosScreen()),
+              ),
+              icon: const Icon(Icons.fitness_center_outlined),
+              label: const Text('Ejercicios para practicar'),
+            ),
           ),
           const SizedBox(height: 32),
           Text(
