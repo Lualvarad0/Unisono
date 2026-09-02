@@ -6,11 +6,13 @@ local.
 
 ## Cómo funciona (dos capas)
 
-- **Capa 1 — Contenido** (`contenido/`, `actividades/`, `sync_remoto/`):
-  antes del servicio, con wifi o datos, cada celular descarga su copia
-  local del repertorio (ritmos, artistas, canciones) y de las actividades
-  (setlists). Usa Firestore, que ya trae caché offline nativa.
-- **Capa 2 — Estado en vivo** (`sync_local/`): durante el servicio, sin
+- **Capa 1 — Contenido**: antes del servicio, con wifi o datos, cada
+  celular descarga su copia local del repertorio (ritmos, artistas,
+  canciones) y de las actividades (setlists). Usa Firestore, que ya trae
+  caché offline nativa. Es el código de `models/`, `repositories/` y
+  `services/firestore_service.dart` relacionado con Firestore.
+- **Capa 2 — Estado en vivo** (todo lo agrupado bajo `sync_local/` dentro
+  de `services/`, `screens/` y `widgets/`): durante el servicio, sin
   internet, el celular del líder transmite por red local (Nearby
   Connections en Android / Multipeer Connectivity en iOS) qué canción y
   qué sección están sonando. Los demás celulares —que ya tienen el
@@ -29,84 +31,89 @@ local.
 
 ## Estructura de carpetas
 
-El proyecto es **feature-first**: cada carpeta bajo `lib/features/` es un
-dominio del negocio, no una capa técnica. Dentro de cada feature, sí se
-separa por capa técnica (`data/`, `presentation/`) porque eso es lo que
-cambia con el tiempo: los modelos y repositorios (Paso 2) ya están
-completos, las pantallas (Pasos 5-6) todavía no.
+El proyecto es **layer-first**: cada carpeta bajo `lib/` es una capa
+técnica (`models/`, `repositories/`, `services/`, `screens/`, `widgets/`),
+no un dominio del negocio — el equivalente Dart a un proyecto Java/Spring
+organizado en `model/`, `repository/`, `service/`, `controller/`. Dentro
+de cada capa, los archivos se agrupan en una subcarpeta por dominio
+(`chordpro/`, `sync_local/`, `acceso/`...) solo cuando hay más de un
+archivo relacionado — así una capa con muchos archivos sigue siendo
+navegable sin volver a mezclar capas distintas.
 
 ```
 lib/
-  main.dart                 # bootstrap: Firebase + Firestore + runApp
-  app.dart                  # MaterialApp, tema, providers globales
-  core/
-    firestore/               # helpers compartidos por TODOS los repositorios
-      repositorio.dart        # contrato Repositorio<T>: contra esto programa el resto de la app
-      model_converter.dart    # fromMap/toMap -> withConverter, sin repetir boilerplate
-      firestore_repository.dart  # implementación con Firestore de Repositorio<T>
-    theme/
-      app_theme.dart          # tipografía grande / alto contraste, pensado para atril
-  features/
-    contenido/                # Capa 1: repertorio (Ritmo -> Artista -> Canción)
-      data/
-        models/                # Ritmo, Artista, Cancion
-        repositories/          # RitmoRepository, ArtistaRepository, CancionRepository
-      domain/
-        chordpro/               # parser + modelo de ChordPro (Paso 3), sin UI ni Firestore
-          acorde.dart            # Acorde: parseo + transposición matemática por semitonos
-          chordpro_modelo.dart   # CancionChordPro/SeccionChordPro/LineaChordPro (+ toChordPro)
-          chordpro_parser.dart   # ChordProParser.parse: texto crudo -> CancionChordPro
-      presentation/            # (Paso 5) pantallas de repertorio + Vista Músico/Cantante
-    actividades/               # Capa 1: calendario y setlists
-      data/
-        models/                # Miembro, SetlistEntry, Actividad
-        repositories/          # MiembroRepository, ActividadRepository
-      presentation/            # (Paso 6) calendario, armado de setlist, Vista Líder
-    sync_remoto/               # Capa 1: infraestructura de Firestore
-      data/services/
-        firestore_service.dart # configura la caché offline persistente
-    sync_local/                # Capa 2: sincronización P2P en vivo (Paso 4)
-      domain/
-        permisos_sync_local.dart      # pide Bluetooth/ubicación en runtime
-        prototipo_conexion_service.dart  # wrapper delgado sobre NearbyService
-      presentation/
-        prototipo_lider_screen.dart      # anuncia + transmite un contador
-        prototipo_seguidor_screen.dart   # busca, se conecta, muestra lo recibido
-        widgets/lista_dispositivos.dart  # lista compartida por las dos pantallas
-  main.dart                     # entry point de la app real
+  main.dart                     # bootstrap: Firebase + Firestore + runApp
+  app.dart                      # MaterialApp, tema, providers globales (el "composition root")
   main_prototipo_sync_local.dart  # entry point SEPARADO del prototipo (Paso 4)
+  core/
+    firestore/                   # helpers compartidos por TODOS los repositorios
+      repositorio.dart            # contrato Repositorio<T>: contra esto programa el resto de la app
+      model_converter.dart        # fromMap/toMap -> withConverter, sin repetir boilerplate
+      firestore_repository.dart   # implementación con Firestore de Repositorio<T>
+    theme/
+      app_theme.dart              # tipografía grande / alto contraste, pensado para atril
+  models/                        # los "datos" — equivalente a entity/ en Java
+    ritmo.dart, artista.dart, cancion.dart      # Capa 1: repertorio
+    miembro.dart, actividad.dart, setlist_entry.dart  # Capa 1: calendario y setlists
+    nota.dart                                   # notas del equipo
+    chordpro/
+      chordpro_modelo.dart        # CancionChordPro/SeccionChordPro/LineaChordPro (+ toChordPro)
+  repositories/                  # acceso a datos — interfaz en core/, implementación acá
+    ritmo_repository.dart, artista_repository.dart, cancion_repository.dart
+    miembro_repository.dart, actividad_repository.dart
+    nota_repository.dart
+  services/                      # lógica de negocio pura, sin widgets
+    autenticacion_service.dart    # login/registro/roles (Firebase Auth)
+    firestore_service.dart        # Capa 1: configura la caché offline persistente
+    chordpro/                     # parser + transposición de ChordPro (Paso 3), sin UI ni Firestore
+      acorde.dart                  # Acorde: parseo (cifrado americano o español) + transposición
+      chordpro_parser.dart         # ChordProParser.parse: texto crudo -> CancionChordPro
+      editor_simple.dart           # conversión letra+acordes <-> ChordPro para el editor simple
+    sync_local/                   # Capa 2: sincronización P2P en vivo (Paso 4)
+      permisos_sync_local.dart     # pide Bluetooth/ubicación en runtime
+      prototipo_conexion_service.dart  # wrapper delgado sobre NearbyService
+  screens/                       # pantallas — cada widget cumple el rol de controller + view
+    acceso/                        # login, registro, selección de rol
+    contenido/                     # home, repertorio, agregar/editar/detalle de alabanza
+    notas/                         # agregar y ver notas del equipo
+    sync_local/                    # prototipo_lider_screen, prototipo_seguidor_screen (Paso 4)
+  widgets/                       # piezas de UI reutilizables entre pantallas
+    linea_chordpro_widget.dart     # una línea de letra+acordes ya renderizada
+    sync_local/lista_dispositivos.dart
 packages/
   flutter_nearby_connections_plus/  # copia local parcheada — ver Paso 4
 ```
 
 ### Por qué esta forma y no otra
 
-- **Feature-first en vez de layer-first** (`lib/models/`, `lib/screens/`
-  a nivel raíz): con 6+ pasos de roadmap y varios colaboradores
-  voluntarios entrando y saliendo, es más fácil orientarse por "qué hace
-  esto" (`contenido`, `sync_local`) que por "en qué capa técnica vive".
-  También hace más fácil borrar o reescribir un feature entero sin tocar
-  el resto.
-- **`sync_remoto` y `sync_local` son features separados**, no una sola
-  carpeta "sync": no comparten nada — uno persiste en Firestore con
-  internet ocasional, el otro es transporte P2P efímero sin internet. Es
-  la separación más importante de todo el proyecto (es la razón de ser de
-  la app), así que se refleja en la estructura de carpetas, no solo en la
-  documentación.
+- **Layer-first en vez de feature-first**: se eligió así para que la
+  estructura resulte familiar viniendo de un backend Java/C#/Node
+  organizado en capas (`model/service/repository/controller`). El costo
+  conocido de este enfoque es que capas con muchas pantallas (`screens/`)
+  pueden crecer bastante — por eso cada capa se subdivide en una carpeta
+  por dominio (`screens/contenido/`, `services/chordpro/`) en vez de tirar
+  todo suelto.
+- **`services/sync_local/` y `firestore_service.dart` no comparten nada**
+  aunque los dos se llamen "sync": uno persiste en Firestore con internet
+  ocasional, el otro es transporte P2P efímero sin internet. Es la
+  separación más importante de todo el proyecto (es la razón de ser de la
+  app), así que sigue existiendo como subcarpeta propia aunque ya no sea
+  un feature de nivel superior.
 - **`Repositorio<T>` es una interfaz abstracta; `FirestoreRepository<T>`
-  es su única implementación** — y es la que se usa hoy, pero ninguna
-  pantalla, provider ni test programa contra ella directamente (`app.dart`
-  registra los providers como `Repositorio<Ritmo>`, no `RitmoRepository`).
-  Es la pieza que hace que la arquitectura aguante cambios sin reescribir:
-  el día que haga falta un repositorio en memoria para tests de widgets, o
-  una capa de caché antes de escribir a Firestore, se agrega una clase
-  nueva que implementa `Repositorio<T>` — no se toca ni una pantalla. Los
-  modelos inmutables con `copyWith` (`cancion.copyWith(...)`,
-  `acorde.transponer(...)`) siguen la misma idea a nivel de datos: nunca se
-  edita un objeto existente, siempre se deriva uno nuevo.
+  (en `core/firestore/`) es su única implementación** — y es la que se usa
+  hoy, pero ninguna pantalla, provider ni test programa contra ella
+  directamente (`app.dart` registra los providers como `Repositorio<Ritmo>`,
+  no `RitmoRepository`). Es la pieza que hace que la arquitectura aguante
+  cambios sin reescribir: el día que haga falta un repositorio en memoria
+  para tests de widgets, o una capa de caché antes de escribir a Firestore,
+  se agrega una clase nueva que implementa `Repositorio<T>` — no se toca
+  ni una pantalla. Los modelos inmutables con `copyWith`
+  (`cancion.copyWith(...)`, `acorde.transponer(...)`) siguen la misma idea
+  a nivel de datos: nunca se edita un objeto existente, siempre se deriva
+  uno nuevo.
 - **`core/firestore/` en vez de repetir el boilerplate de
-  `withConverter` en cada modelo**: los cinco modelos (Ritmo, Artista,
-  Canción, Miembro, Actividad) necesitan exactamente las mismas cinco
+  `withConverter` en cada modelo**: los modelos (Ritmo, Artista, Canción,
+  Miembro, Actividad, Nota) necesitan exactamente las mismas cinco
   operaciones CRUD contra Firestore. `ModelConverter` y
   `FirestoreRepository<T>` existen para que agregar un modelo nuevo sea
   "escribir el modelo + una clase de 8 líneas", no repetir 40 líneas de
@@ -116,13 +123,34 @@ packages/
   reordenarlo), nunca una canción del setlist por separado. Embeberlo
   como array evita una lectura extra y es más simple de mantener
   consistente offline.
-- **`contenido/domain/chordpro/` separado de `contenido/data/`**: el
-  parser de ChordPro no sabe nada de Firestore ni de widgets — solo
-  convierte texto en un árbol de secciones/acordes y sabe transportarse.
-  Vive en `domain/` (no en `data/`, no en `presentation/`) para que se
-  pueda testear con `flutter test` sin Firebase inicializado y para que
-  el Paso 5 (Vista Músico/Cantante) lo use como cualquier librería, sin
-  acoplarse a cómo se persiste la canción.
+- **`services/chordpro/` separado de `models/chordpro/`**: el parser de
+  ChordPro no sabe nada de Firestore ni de widgets — solo convierte texto
+  en un árbol de secciones/acordes (definido en `models/chordpro/`) y sabe
+  transportarse. Vive en `services/` para que se pueda testear con
+  `flutter test` sin Firebase inicializado, y para que cualquier pantalla
+  lo use como cualquier librería, sin acoplarse a cómo se persiste la
+  canción.
+- **Los imports internos son absolutos (`package:app_alabanzas/...`),
+  no relativos (`../../../..`)** — es lo más parecido en Dart a los
+  imports totalmente calificados de Java (`import com.app.model.User;`):
+  el path no cambia si movés el archivo que importa, y se lee de un
+  vistazo desde qué capa viene cada dependencia.
+
+### Pendiente de ubicar (Pasos 5-6)
+
+Dos decisiones de diseño que todavía no se implementaron, para que no se
+pierdan:
+
+- **Vista Músico / Vista Cantante** (Paso 5): son widgets que consumen
+  `Cancion` ya transportada al tono del día — van en `screens/contenido/`
+  aunque el estado que consuman (sección activa, tono en vivo) venga de
+  `services/sync_local/`.
+- **Vista Líder** (Paso 6): además de letra/acordes, tiene los controles
+  para avanzar sección/canción, cambiar tono en vivo, y ver el estado de
+  conexión de los demás dispositivos. Va a vivir junto al calendario de
+  actividades (`screens/`, dominio "actividades" — todavía sin crear) y no
+  en `sync_local`, porque su punto de partida conceptual es "elegir y
+  controlar la Actividad de hoy", no el transporte P2P en sí mismo.
 
 ## Requisitos
 
@@ -291,7 +319,7 @@ datos ya viven en los campos propios de `Cancion` (`titulo`,
 programa, se puede pegar en `contenidoChordPro` sin editarlo a mano.
 
 El parser vive en
-[lib/features/contenido/domain/chordpro/](lib/features/contenido/domain/chordpro/)
+[lib/services/chordpro/](lib/services/chordpro/)
 y no depende de Firestore ni de Flutter UI — es una librería Dart pura,
 así que la usan tanto la futura Vista Músico/Cantante (Paso 5) como
 cualquier test. Uso típico, con el offset del día que ya trae
@@ -381,7 +409,7 @@ el mismo `build.gradle`.
 Android exige, además de declararlos en el manifest (ya está en
 `android/app/src/main/AndroidManifest.xml` y en el propio manifest del
 plugin), pedirlos en tiempo de ejecución — eso lo hace
-[permisos_sync_local.dart](lib/features/sync_local/domain/permisos_sync_local.dart)
+[permisos_sync_local.dart](lib/services/sync_local/permisos_sync_local.dart)
 antes de iniciar el servicio: ubicación (`locationWhenInUse`) y los tres
 permisos granulares de Bluetooth de Android 12+ (`bluetoothScan`,
 `bluetoothAdvertise`, `bluetoothConnect`). En iOS, `Info.plist` ya declara

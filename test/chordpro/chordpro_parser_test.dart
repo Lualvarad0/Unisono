@@ -1,5 +1,5 @@
-import 'package:app_alabanzas/features/contenido/domain/chordpro/chordpro_modelo.dart';
-import 'package:app_alabanzas/features/contenido/domain/chordpro/chordpro_parser.dart';
+import 'package:app_alabanzas/models/chordpro/chordpro_modelo.dart';
+import 'package:app_alabanzas/services/chordpro/chordpro_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _fuente = '''

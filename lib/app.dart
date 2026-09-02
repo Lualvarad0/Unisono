@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'core/firestore/repositorio.dart';
-import 'core/theme/app_theme.dart';
-import 'features/acceso/data/services/autenticacion_service.dart';
-import 'features/acceso/presentation/splash_screen.dart';
-import 'features/actividades/data/models/actividad.dart';
-import 'features/actividades/data/models/miembro.dart';
-import 'features/actividades/data/repositories/actividad_repository.dart';
-import 'features/actividades/data/repositories/miembro_repository.dart';
-import 'features/contenido/data/models/artista.dart';
-import 'features/contenido/data/models/cancion.dart';
-import 'features/contenido/data/models/ritmo.dart';
-import 'features/contenido/data/repositories/artista_repository.dart';
-import 'features/contenido/data/repositories/cancion_repository.dart';
-import 'features/contenido/data/repositories/ritmo_repository.dart';
-import 'features/notas/data/models/nota.dart';
-import 'features/notas/data/repositories/nota_repository.dart';
+import 'package:app_alabanzas/core/firestore/repositorio.dart';
+import 'package:app_alabanzas/core/theme/app_theme.dart';
+import 'package:app_alabanzas/services/autenticacion_service.dart';
+import 'package:app_alabanzas/screens/acceso/splash_screen.dart';
+import 'package:app_alabanzas/models/actividad.dart';
+import 'package:app_alabanzas/models/miembro.dart';
+import 'package:app_alabanzas/repositories/actividad_repository.dart';
+import 'package:app_alabanzas/repositories/miembro_repository.dart';
+import 'package:app_alabanzas/models/artista.dart';
+import 'package:app_alabanzas/models/cancion.dart';
+import 'package:app_alabanzas/models/ritmo.dart';
+import 'package:app_alabanzas/repositories/artista_repository.dart';
+import 'package:app_alabanzas/repositories/cancion_repository.dart';
+import 'package:app_alabanzas/repositories/ritmo_repository.dart';
+import 'package:app_alabanzas/models/nota.dart';
+import 'package:app_alabanzas/repositories/nota_repository.dart';
 
 /// Widget raíz. Registra los repositorios de la Capa 1 (Contenido) y el
 /// servicio de Acceso como providers globales: cualquier pantalla, sin
