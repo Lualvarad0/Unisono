@@ -4,8 +4,12 @@ import 'package:google_fonts/google_fonts.dart';
 /// Sistema visual "Nocturne", tomado del prototipo de diseño (32
 /// pantallas): Inter en todo el texto, radios de 8px, y un acento blurple
 /// que se usa como línea/resplandor — nunca como relleno grande de fondo.
-/// Oscuro es la base (así está diseñado el prototipo); el claro existe
-/// para el caso iOS con luz de sala.
+/// Oscuro es la base (así está diseñado el prototipo) y es lo único que
+/// usa la app hoy — `AppAlabanzas` fija `theme: AppTheme.dark` sin seguir
+/// el modo del sistema, porque el diseño es oscuro siempre, no "oscuro si
+/// el celular está en oscuro". `AppTheme.light` queda definido para el
+/// día que se agregue un selector manual (ej. luz de sala en iOS), pero
+/// no se usa todavía.
 ///
 /// Las vistas de Músico y Cantante (Paso 5) parten de acá pero además
 /// suben el tamaño de letra puntual del bloque de la canción activa — dos

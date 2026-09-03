@@ -8,7 +8,7 @@ void main() {
       (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppTheme.light,
+        theme: AppTheme.dark,
         home: const Scaffold(
           body: Center(child: Text('App Alabanzas — estructura base lista')),
         ),
