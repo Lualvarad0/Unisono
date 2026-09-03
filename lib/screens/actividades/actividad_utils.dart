@@ -1,11 +1,4 @@
-const _diasSemana = [
-  'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo', //
-];
-
-const _meses = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', //
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-];
+import 'package:app_alabanzas/core/formato_fecha.dart';
 
 const escalaCromatica = [
   'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', //
@@ -16,8 +9,8 @@ const escalaCromatica = [
 /// async extra de inicialización de locale (ver `AppAlabanzas` en
 /// `app.dart`, que ya maneja su propio estado de arranque).
 String formatearFechaActividad(DateTime fecha) {
-  final dia = _diasSemana[fecha.weekday - 1];
-  final mes = _meses[fecha.month - 1];
+  final dia = diasSemana[fecha.weekday - 1];
+  final mes = meses[fecha.month - 1];
   return '${dia[0].toUpperCase()}${dia.substring(1)} ${fecha.day} de $mes';
 }
 
