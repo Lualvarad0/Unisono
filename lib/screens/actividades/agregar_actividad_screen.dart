@@ -8,6 +8,7 @@ import 'package:app_alabanzas/models/miembro.dart';
 import 'package:app_alabanzas/models/setlist_entry.dart';
 import 'package:app_alabanzas/repositories/actividad_repository.dart';
 import 'package:app_alabanzas/screens/actividades/actividad_utils.dart';
+import 'package:app_alabanzas/widgets/encabezado_seccion.dart';
 
 /// Crear o editar una Actividad: nombre, fecha/hora, y el setlist —
 /// canciones en orden, cada una con cantante y tono asignados para ese
@@ -148,10 +149,12 @@ class _AgregarActividadScreenState extends State<AgregarActividadScreen> {
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
+              const EncabezadoSeccion('DATOS DE LA ACTIVIDAD'),
+              const SizedBox(height: 12),
               TextField(
                 controller: _nombreController,
                 decoration: const InputDecoration(
-                  labelText: 'Nombre',
+                  labelText: 'Nombre *',
                   hintText: 'Ej. Servicio dominical',
                 ),
               ),
@@ -160,7 +163,7 @@ class _AgregarActividadScreenState extends State<AgregarActividadScreen> {
                 onTap: _elegirFecha,
                 borderRadius: BorderRadius.circular(8),
                 child: InputDecorator(
-                  decoration: const InputDecoration(labelText: 'Fecha y hora'),
+                  decoration: const InputDecoration(labelText: 'Fecha y hora *'),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -173,11 +176,11 @@ class _AgregarActividadScreenState extends State<AgregarActividadScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Setlist', style: tema.textTheme.labelLarge),
+                  const EncabezadoSeccion('SETLIST'),
                   TextButton.icon(
                     onPressed: datos.canciones.isEmpty
                         ? null
@@ -212,17 +215,50 @@ class _AgregarActividadScreenState extends State<AgregarActividadScreen> {
                         : transponerTono(
                             cancion.tonoOriginal, entrada.tonoAsignado);
                     final cantante = nombrePorMiembroId[entrada.cantanteId];
+                    final tieneCantante = cantante != null && cantante.isNotEmpty;
                     return Card(
                       key: ValueKey(i),
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
                         leading: CircleAvatar(child: Text('${i + 1}')),
                         title: Text(cancion?.titulo ?? 'Canción eliminada'),
-                        subtitle: Text([
-                          if (tonoResultante != null) 'Tono: $tonoResultante',
-                          if (cantante != null && cantante.isNotEmpty)
-                            'Canta: $cantante',
-                        ].join(' · ')),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (tonoResultante != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.music_note_outlined,
+                                        size: 14,
+                                        color: tema.colorScheme.onSurfaceVariant),
+                                    const SizedBox(width: 4),
+                                    Text('Tono: $tonoResultante'),
+                                  ],
+                                ),
+                              ),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.mic_outlined,
+                                      size: 14,
+                                      color: tema.colorScheme.onSurfaceVariant),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    tieneCantante
+                                        ? cantante
+                                        : 'Sin cantante asignado',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        isThreeLine: tonoResultante != null,
                         trailing: IconButton(
                           icon: const Icon(Icons.close),
                           tooltip: 'Quitar',
@@ -242,6 +278,13 @@ class _AgregarActividadScreenState extends State<AgregarActividadScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2.4),
                       )
                     : Text(editando ? 'Guardar cambios' : 'Crear actividad'),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '* obligatorio',
+                textAlign: TextAlign.center,
+                style: tema.textTheme.bodySmall
+                    ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
               ),
             ],
           );

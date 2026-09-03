@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:app_alabanzas/core/firestore/repositorio.dart';
+import 'package:app_alabanzas/core/theme/app_theme.dart';
 import 'package:app_alabanzas/models/actividad.dart';
 import 'package:app_alabanzas/models/cancion.dart';
 import 'package:app_alabanzas/models/miembro.dart';
@@ -11,6 +12,7 @@ import 'package:app_alabanzas/services/autenticacion_service.dart';
 import 'package:app_alabanzas/screens/actividades/actividad_utils.dart';
 import 'package:app_alabanzas/screens/actividades/agregar_actividad_screen.dart';
 import 'package:app_alabanzas/screens/contenido/detalle_alabanza_screen.dart';
+import 'package:app_alabanzas/widgets/encabezado_seccion.dart';
 
 /// Vista de una Actividad ya guardada: nombre, fecha y el setlist en
 /// orden, con canción, tono asignado y cantante por fila. El líder puede
@@ -88,6 +90,18 @@ class _Contenido extends StatelessWidget {
   final Map<String, Cancion> cancionPorId;
   final Map<String, String> nombrePorMiembroId;
 
+  /// Nombres de quienes cantan en este evento, sin repetir — para el
+  /// resumen "Equipo para este evento" (una persona puede cantar más de
+  /// una canción del setlist, pero acá aparece una sola vez).
+  List<String> get _cantantesUnicos {
+    final vistos = <String>{};
+    for (final entrada in actividad.setlist) {
+      final nombre = nombrePorMiembroId[entrada.cantanteId];
+      if (nombre != null && nombre.isNotEmpty) vistos.add(nombre);
+    }
+    return vistos.toList()..sort();
+  }
+
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
@@ -122,6 +136,41 @@ class _Contenido extends StatelessWidget {
             ),
           ),
         ),
+        if (_cantantesUnicos.isNotEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const EncabezadoSeccion('EQUIPO PARA ESTE EVENTO'),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final nombre in _cantantesUnicos)
+                        Chip(
+                          avatar: CircleAvatar(
+                            backgroundColor:
+                                AppTheme.acento.withValues(alpha: 0.16),
+                            child: Text(
+                              nombre[0].toUpperCase(),
+                              style: TextStyle(
+                                color: tema.colorScheme.primary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          label: Text(nombre),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         if (actividad.setlist.isEmpty)
           SliverToBoxAdapter(
             child: Padding(
@@ -166,19 +215,47 @@ class _FilaSetlist extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cancion = this.cancion;
+    final tema = Theme.of(context);
     final tonoResultante =
         cancion == null ? null : transponerTono(cancion.tonoOriginal, entrada.tonoAsignado);
+    final tieneCantante = cantanteNombre != null && cantanteNombre!.isNotEmpty;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         leading: CircleAvatar(child: Text('${entrada.orden + 1}')),
         title: Text(cancion?.titulo ?? 'Canción eliminada'),
-        subtitle: Text([
-          if (tonoResultante != null) 'Tono: $tonoResultante',
-          if (cantanteNombre != null && cantanteNombre!.isNotEmpty)
-            'Canta: $cantanteNombre',
-        ].join(' · ')),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (tonoResultante != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.music_note_outlined,
+                        size: 14, color: tema.colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 4),
+                    Text('Tono: $tonoResultante'),
+                  ],
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.mic_outlined,
+                      size: 14, color: tema.colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 4),
+                  Text(tieneCantante ? cantanteNombre! : 'Sin cantante asignado'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        isThreeLine: tonoResultante != null,
         trailing: cancion == null ? null : const Icon(Icons.chevron_right),
         onTap: cancion == null
             ? null
