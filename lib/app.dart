@@ -129,9 +129,7 @@ class _AppConProviders extends StatelessWidget {
       child: MaterialApp(
         title: 'Unísono',
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        darkTheme: AppTheme.dark,
-        themeMode: ThemeMode.system,
+        theme: AppTheme.dark,
         home: const SplashScreen(),
       ),
     );
@@ -149,9 +147,7 @@ class _ArranqueEnCurso extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
+      theme: AppTheme.dark,
       home: const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       ),
@@ -172,9 +168,7 @@ class _ArranqueFallido extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
+      theme: AppTheme.dark,
       home: Scaffold(
         body: SafeArea(
           child: Padding(
