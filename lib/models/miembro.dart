@@ -6,6 +6,17 @@ import 'package:app_alabanzas/core/firestore/model_converter.dart';
 /// varios a la vez (ej. alguien que toca guitarra y también canta).
 enum RolMiembro { lider, musico, cantante }
 
+/// Nombre para mostrar de cada rol — un solo lugar para esto en vez de
+/// repetir el mapeo en cada pantalla que lista o edita roles (Mi equipo,
+/// Mi perfil).
+extension RolMiembroNombre on RolMiembro {
+  String get nombreVisible => switch (this) {
+        RolMiembro.lider => 'Líder',
+        RolMiembro.musico => 'Músico',
+        RolMiembro.cantante => 'Cantante',
+      };
+}
+
 /// Un integrante del grupo de alabanza.
 class Miembro extends Equatable {
   const Miembro({

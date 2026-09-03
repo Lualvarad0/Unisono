@@ -6,12 +6,6 @@ import 'package:app_alabanzas/models/miembro.dart';
 import 'package:app_alabanzas/repositories/miembro_repository.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
 
-const _nombreRol = {
-  RolMiembro.lider: 'Líder',
-  RolMiembro.musico: 'Músico',
-  RolMiembro.cantante: 'Cantante',
-};
-
 /// "Mi equipo": la lista de integrantes con sus roles. Cualquiera la puede
 /// ver; solo quien tiene el rol Líder puede tocar a alguien para cambiarle
 /// los roles — el resto la ve de solo lectura.
@@ -109,7 +103,7 @@ class _TarjetaMiembro extends StatelessWidget {
             else
               for (final rol in miembro.roles)
                 Chip(
-                  label: Text(_nombreRol[rol]!),
+                  label: Text(rol.nombreVisible),
                   visualDensity: VisualDensity.compact,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
@@ -137,16 +131,16 @@ class _DialogoRolesState extends State<_DialogoRoles> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Roles'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
+      content: Wrap(
+        spacing: 8,
+        runSpacing: 8,
         children: [
           for (final rol in RolMiembro.values)
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(_nombreRol[rol]!),
-              value: _seleccionados.contains(rol),
-              onChanged: (marcado) => setState(() {
-                if (marcado ?? false) {
+            FilterChip(
+              label: Text(rol.nombreVisible),
+              selected: _seleccionados.contains(rol),
+              onSelected: (marcado) => setState(() {
+                if (marcado) {
                   _seleccionados.add(rol);
                 } else {
                   _seleccionados.remove(rol);

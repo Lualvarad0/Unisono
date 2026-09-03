@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
-import 'package:app_alabanzas/services/autenticacion_service.dart';
-import 'package:app_alabanzas/screens/notas/mis_notas_screen.dart';
 import 'package:app_alabanzas/screens/contenido/home_screen.dart';
 import 'package:app_alabanzas/screens/contenido/repertorio_screen.dart';
-import 'package:app_alabanzas/screens/equipo/equipo_screen.dart';
 import 'package:app_alabanzas/screens/actividades/setlists_screen.dart';
+import 'package:app_alabanzas/screens/perfil/perfil_screen.dart';
 
 /// Contenedor con la barra inferior de navegación (Inicio, Repertorio, En
 /// vivo, Setlists, Perfil) — lo primero que se ve después de Acceso.
@@ -34,7 +31,7 @@ class _PrincipalShellScreenState extends State<PrincipalShellScreen> {
       const RepertorioScreenSinAppBar(),
       const _ProximamenteScreen(titulo: 'En vivo'),
       const SetlistsScreen(),
-      const _PerfilScreen(),
+      const PerfilScreen(),
     ];
     return Scaffold(
       appBar: _indice == 0 ? AppBar(title: const Text('Unísono')) : null,
@@ -84,51 +81,6 @@ class _ProximamenteScreen extends StatelessWidget {
             .textTheme
             .bodyMedium
             ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-      ),
-    );
-  }
-}
-
-class _PerfilScreen extends StatelessWidget {
-  const _PerfilScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    final usuario = context.read<AutenticacionService>().usuarioActual;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircleAvatar(radius: 32, child: Icon(Icons.person, size: 32)),
-            const SizedBox(height: 16),
-            Text(usuario?.email ?? ''),
-            const SizedBox(height: 24),
-            OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const EquipoScreen()),
-              ),
-              icon: const Icon(Icons.groups_outlined),
-              label: const Text('Mi equipo'),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const MisNotasScreen()),
-              ),
-              icon: const Icon(Icons.sticky_note_2_outlined),
-              label: const Text('Mis notas'),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () =>
-                  context.read<AutenticacionService>().cerrarSesion(),
-              icon: const Icon(Icons.logout),
-              label: const Text('Cerrar sesión'),
-            ),
-          ],
-        ),
       ),
     );
   }
