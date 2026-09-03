@@ -64,7 +64,7 @@ class _AgregarEjercicioScreenState extends State<AgregarEjercicioScreen> {
               controller: _tituloController,
               autofocus: true,
               decoration: const InputDecoration(
-                labelText: 'Título',
+                labelText: 'Título *',
                 hintText: 'Ej. Practicar el puente de Way Maker',
               ),
             ),
@@ -76,6 +76,13 @@ class _AgregarEjercicioScreenState extends State<AgregarEjercicioScreen> {
                 labelText: 'Detalle (opcional)',
                 hintText: 'Ej. Entrar suave, sin batería los primeros 4 compases.',
               ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '* obligatorio',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
             const SizedBox(height: 16),
             StreamBuilder<List<Cancion>>(

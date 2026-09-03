@@ -7,6 +7,7 @@ import 'package:app_alabanzas/models/cancion.dart';
 import 'package:app_alabanzas/screens/contenido/detectar_tonalidad_screen.dart';
 import 'package:app_alabanzas/screens/contenido/editor_chordpro_screen.dart';
 import 'package:app_alabanzas/screens/contenido/editor_simple_screen.dart';
+import 'package:app_alabanzas/widgets/encabezado_seccion.dart';
 
 /// Pantalla 9: cargar una alabanza nueva. Sigue el flujo sugerido del
 /// diseño (Agregar → Editor → Detectar tono → Guardar), pero como
@@ -141,9 +142,11 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            const EncabezadoSeccion('DATOS BÁSICOS'),
+            const SizedBox(height: 12),
             TextFormField(
               controller: _tituloController,
-              decoration: const InputDecoration(labelText: 'Título'),
+              decoration: const InputDecoration(labelText: 'Título *'),
               validator: (valor) =>
                   (valor == null || valor.trim().isEmpty) ? 'Falta el título' : null,
             ),
@@ -153,7 +156,9 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
               decoration:
                   const InputDecoration(labelText: 'Artista / Ministerio'),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 28),
+            const EncabezadoSeccion('DETALLES MUSICALES'),
+            const SizedBox(height: 12),
             InkWell(
               onTap: _elegirTono,
               borderRadius: BorderRadius.circular(8),
@@ -163,7 +168,14 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(_tono, style: tema.textTheme.bodyLarge),
-                    const Icon(Icons.expand_more),
+                    // chevron_right (no expand_more) a propósito: este
+                    // campo no despliega un menú acá mismo, navega a
+                    // DetectarTonalidadScreen — el ícono tiene que avisar
+                    // eso, no parecer un dropdown que no es.
+                    Icon(
+                      Icons.chevron_right,
+                      color: tema.colorScheme.onSurfaceVariant,
+                    ),
                   ],
                 ),
               ),
@@ -175,8 +187,7 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
                   child: TextFormField(
                     controller: _bpmController,
                     keyboardType: TextInputType.number,
-                    decoration:
-                        const InputDecoration(labelText: 'BPM opcional'),
+                    decoration: const InputDecoration(labelText: 'BPM'),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -191,9 +202,9 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Text('Etiquetas', style: tema.textTheme.labelLarge),
-            const SizedBox(height: 8),
+            const SizedBox(height: 28),
+            const EncabezadoSeccion('ETIQUETAS'),
+            const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -213,9 +224,9 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            Text('Letra y acordes', style: tema.textTheme.labelLarge),
-            const SizedBox(height: 8),
+            const SizedBox(height: 28),
+            const EncabezadoSeccion('LETRA Y ACORDES *'),
+            const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: _abrirEditorSimple,
               icon: const Icon(Icons.edit_outlined),
@@ -243,7 +254,14 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
                     )
                   : const Text('Guardar alabanza'),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
+            Text(
+              '* obligatorio',
+              textAlign: TextAlign.center,
+              style: tema.textTheme.bodySmall
+                  ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 4),
             Text(
               'Se descarga una copia local automáticamente.',
               textAlign: TextAlign.center,
