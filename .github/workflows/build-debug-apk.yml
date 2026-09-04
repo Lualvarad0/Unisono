@@ -1,0 +1,36 @@
+name: Build debug APK
+
+# Compila el APK debug en un runner de GitHub, sin depender del entorno
+# local — usado mientras el JDK/Gradle local está bloqueado por un
+# driver de red (ver commits recientes). Se puede disparar a mano desde
+# la pestaña Actions o con cada push a main.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.2"
+          channel: stable
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build apk --debug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
