@@ -250,7 +250,9 @@ class _ElegirQuienSosState extends State<_ElegirQuienSos> {
             margin: const EdgeInsets.only(bottom: 10),
             child: ListTile(
               title: Text(miembro.nombre),
-              subtitle: Text(miembro.roles.map((r) => r.name).join(' · ')),
+              subtitle: Text(
+                miembro.roles.map((r) => r.nombreVisible).join(' · '),
+              ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => widget.onElegir(miembro),
             ),

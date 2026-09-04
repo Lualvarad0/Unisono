@@ -175,6 +175,7 @@ class _Contenido extends StatelessWidget {
         ),
         if (miembro != null &&
             (miembro.edad != null ||
+                (miembro.telefono?.isNotEmpty ?? false) ||
                 (miembro.instrumento?.isNotEmpty ?? false) ||
                 miembro.nivelInstrumento != null)) ...[
           const SizedBox(height: 24),
@@ -189,6 +190,12 @@ class _Contenido extends StatelessWidget {
                       leading: const Icon(Icons.cake_outlined),
                       title: const Text('Edad'),
                       trailing: Text('${miembro.edad} años'),
+                    ),
+                  if (miembro.telefono?.isNotEmpty ?? false)
+                    ListTile(
+                      leading: const Icon(Icons.call_outlined),
+                      title: const Text('Teléfono'),
+                      trailing: Text(miembro.telefono!),
                     ),
                   if (miembro.instrumento?.isNotEmpty ?? false)
                     ListTile(
