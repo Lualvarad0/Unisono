@@ -33,6 +33,13 @@ jobs:
           FIREBASE_OPTIONS_DART: ${{ secrets.FIREBASE_OPTIONS_PARA_SECRET }}
         run: printf '%s' "$FIREBASE_OPTIONS_DART" > lib/firebase_options.dart
 
+      # Mismo caso que firebase_options.dart, pero para el build nativo de
+      # Android: el plugin de Google Services necesita este archivo.
+      - name: Escribir google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
