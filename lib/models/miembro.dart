@@ -39,7 +39,8 @@ class Miembro extends Equatable {
     this.apellido = '',
     required this.roles,
     this.uid,
-    this.cumpleanos,
+    this.fechaNacimiento,
+    this.telefono,
     this.instrumento,
     this.nivelInstrumento,
   });
@@ -52,10 +53,17 @@ class Miembro extends Equatable {
   /// UID de Firebase Auth de la cuenta vinculada a este integrante. `null`
   /// hasta que alguien "reclama" este perfil en la pantalla de Selección
   /// de rol (Paso Acceso) — antes de eso el perfil existe en Firestore
-  /// pero todavía no hay ninguna cuenta logueada detrás.
+  /// pero todavía no hay ninguna cuenta logueada detrás. También es el
+  /// estado de un integrante recién invitado por el líder (ver
+  /// `InvitarMiembroScreen`): existe en el equipo pero todavía nadie está
+  /// logueado como esa persona.
   final String? uid;
 
-  final DateTime? cumpleanos;
+  final DateTime? fechaNacimiento;
+
+  /// Para coordinar por fuera de la app (avisar un cambio de última hora,
+  /// etc.) — texto libre para no forzar un formato de número.
+  final String? telefono;
 
   /// Ej. "Guitarra", "Batería", "Voz". Texto libre a propósito: cubre
   /// cualquier instrumento sin tener que mantener una lista cerrada.
@@ -66,11 +74,11 @@ class Miembro extends Equatable {
   String get nombreCompleto =>
       apellido.isEmpty ? nombre : '$nombre $apellido';
 
-  /// Edad calculada a partir de `cumpleanos` en vez de guardarse aparte —
-  /// así nunca queda desincronizada (la edad cambia sola con el tiempo,
-  /// el cumpleaños no).
+  /// Edad calculada a partir de `fechaNacimiento` en vez de guardarse
+  /// aparte — así nunca queda desincronizada (la edad cambia sola con el
+  /// tiempo, la fecha de nacimiento no).
   int? get edad {
-    final fecha = cumpleanos;
+    final fecha = fechaNacimiento;
     if (fecha == null) return null;
     final ahora = DateTime.now();
     var edad = ahora.year - fecha.year;
@@ -87,7 +95,8 @@ class Miembro extends Equatable {
   double get progresoPerfil {
     final campos = [
       apellido.isNotEmpty,
-      cumpleanos != null,
+      fechaNacimiento != null,
+      telefono != null && telefono!.isNotEmpty,
       instrumento != null && instrumento!.isNotEmpty,
       nivelInstrumento != null,
     ];
@@ -110,7 +119,8 @@ class Miembro extends Equatable {
           )
           .toList(),
       uid: map['uid'] as String?,
-      cumpleanos: (map['cumpleanos'] as Timestamp?)?.toDate(),
+      fechaNacimiento: (map['fechaNacimiento'] as Timestamp?)?.toDate(),
+      telefono: map['telefono'] as String?,
       instrumento: map['instrumento'] as String?,
       nivelInstrumento: nivelRaw == null
           ? null
@@ -126,8 +136,10 @@ class Miembro extends Equatable {
         'apellido': apellido,
         'roles': roles.map((r) => r.name).toList(),
         'uid': uid,
-        'cumpleanos':
-            cumpleanos == null ? null : Timestamp.fromDate(cumpleanos!),
+        'fechaNacimiento': fechaNacimiento == null
+            ? null
+            : Timestamp.fromDate(fechaNacimiento!),
+        'telefono': telefono,
         'instrumento': instrumento,
         'nivelInstrumento': nivelInstrumento?.name,
       };
@@ -144,7 +156,8 @@ class Miembro extends Equatable {
       apellido: apellido,
       roles: roles ?? this.roles,
       uid: limpiarUid ? null : (uid ?? this.uid),
-      cumpleanos: cumpleanos,
+      fechaNacimiento: fechaNacimiento,
+      telefono: telefono,
       instrumento: instrumento,
       nivelInstrumento: nivelInstrumento,
     );
@@ -162,7 +175,8 @@ class Miembro extends Equatable {
         apellido,
         roles,
         uid,
-        cumpleanos,
+        fechaNacimiento,
+        telefono,
         instrumento,
         nivelInstrumento,
       ];

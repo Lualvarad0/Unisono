@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:app_alabanzas/core/firestore/repositorio.dart';
 import 'package:app_alabanzas/models/miembro.dart';
 import 'package:app_alabanzas/repositories/miembro_repository.dart';
+import 'package:app_alabanzas/screens/equipo/invitar_miembro_screen.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
 
 /// "Mi equipo": la lista de integrantes con sus roles. Cualquiera la puede
@@ -16,16 +17,30 @@ class EquipoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final uid = context.read<AutenticacionService>().usuarioActual?.uid;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Mi equipo')),
-      body: FutureBuilder<Miembro?>(
-        future: uid == null
-            ? null
-            : context.read<MiembroRepository>().buscarPorUid(uid),
-        builder: (context, snapshotYo) {
-          final esLider =
-              snapshotYo.data?.roles.contains(RolMiembro.lider) ?? false;
-          return StreamBuilder<List<Miembro>>(
+    return FutureBuilder<Miembro?>(
+      future: uid == null
+          ? null
+          : context.read<MiembroRepository>().buscarPorUid(uid),
+      builder: (context, snapshotYo) {
+        final esLider =
+            snapshotYo.data?.roles.contains(RolMiembro.lider) ?? false;
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Mi equipo'),
+            actions: [
+              if (esLider)
+                IconButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const InvitarMiembroScreen(),
+                    ),
+                  ),
+                  icon: const Icon(Icons.person_add_outlined),
+                  tooltip: 'Invitar integrante',
+                ),
+            ],
+          ),
+          body: StreamBuilder<List<Miembro>>(
             stream: context.read<Repositorio<Miembro>>().watchAll(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
@@ -50,9 +65,9 @@ class EquipoScreen extends StatelessWidget {
                 },
               );
             },
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

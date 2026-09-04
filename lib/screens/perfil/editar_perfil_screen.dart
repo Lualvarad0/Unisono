@@ -28,7 +28,9 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
       TextEditingController(text: widget.miembro.apellido);
   late final _instrumentoController =
       TextEditingController(text: widget.miembro.instrumento ?? '');
-  late DateTime? _cumpleanos = widget.miembro.cumpleanos;
+  late final _telefonoController =
+      TextEditingController(text: widget.miembro.telefono ?? '');
+  late DateTime? _fechaNacimiento = widget.miembro.fechaNacimiento;
   late NivelInstrumento? _nivel = widget.miembro.nivelInstrumento;
   late final Set<RolMiembro> _roles = {...widget.miembro.roles};
   bool _guardando = false;
@@ -37,7 +39,8 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
       _nombreController.text.trim() != widget.miembro.nombre ||
       _apellidoController.text.trim() != widget.miembro.apellido ||
       _instrumentoController.text.trim() != (widget.miembro.instrumento ?? '') ||
-      _cumpleanos != widget.miembro.cumpleanos ||
+      _telefonoController.text.trim() != (widget.miembro.telefono ?? '') ||
+      _fechaNacimiento != widget.miembro.fechaNacimiento ||
       _nivel != widget.miembro.nivelInstrumento ||
       !setEquals(_roles, widget.miembro.roles.toSet());
 
@@ -46,17 +49,18 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
     _nombreController.dispose();
     _apellidoController.dispose();
     _instrumentoController.dispose();
+    _telefonoController.dispose();
     super.dispose();
   }
 
-  Future<void> _elegirCumpleanos() async {
+  Future<void> _elegirFechaNacimiento() async {
     final elegido = await showDatePicker(
       context: context,
-      initialDate: _cumpleanos ?? DateTime(DateTime.now().year - 25),
+      initialDate: _fechaNacimiento ?? DateTime(DateTime.now().year - 25),
       firstDate: DateTime(1920),
       lastDate: DateTime.now(),
     );
-    if (elegido != null) setState(() => _cumpleanos = elegido);
+    if (elegido != null) setState(() => _fechaNacimiento = elegido);
   }
 
   /// La única ventana flotante de esta pantalla: un aviso puntual, no un
@@ -88,13 +92,15 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
     setState(() => _guardando = true);
     final repositorio = context.read<MiembroRepository>();
     final instrumento = _instrumentoController.text.trim();
+    final telefono = _telefonoController.text.trim();
     final actualizado = Miembro(
       id: widget.miembro.id,
       nombre: nombre,
       apellido: _apellidoController.text.trim(),
       roles: _roles.toList(),
       uid: widget.miembro.uid,
-      cumpleanos: _cumpleanos,
+      fechaNacimiento: _fechaNacimiento,
+      telefono: telefono.isEmpty ? null : telefono,
       instrumento: instrumento.isEmpty ? null : instrumento,
       nivelInstrumento: _nivel,
     );
@@ -137,23 +143,31 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
             ),
             const SizedBox(height: 16),
             InkWell(
-              onTap: _elegirCumpleanos,
+              onTap: _elegirFechaNacimiento,
               borderRadius: BorderRadius.circular(8),
               child: InputDecorator(
-                decoration: const InputDecoration(labelText: 'Cumpleaños'),
+                decoration:
+                    const InputDecoration(labelText: 'Fecha de nacimiento'),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      _cumpleanos == null
+                      _fechaNacimiento == null
                           ? 'Sin definir'
-                          : formatearFechaLarga(_cumpleanos!),
+                          : formatearFechaLarga(_fechaNacimiento!),
                     ),
                     Icon(Icons.cake_outlined,
                         size: 20, color: tema.colorScheme.onSurfaceVariant),
                   ],
                 ),
               ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _telefonoController,
+              decoration: const InputDecoration(labelText: 'Teléfono'),
+              keyboardType: TextInputType.phone,
+              onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 28),
             const EncabezadoSeccion('MÚSICA'),
