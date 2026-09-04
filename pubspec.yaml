@@ -51,9 +51,27 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icon/
+
+# Ícono de la app: mismo logo de ondas que ya se usa en la pantalla de
+# bienvenida (ver _LogoUnisono en splash_screen.dart) — fondo violeta de
+# marca (#6C63FF) con las 5 barras en blanco. `icon_foreground.png` es
+# solo las barras sobre fondo transparente, para el ícono adaptativo de
+# Android (que recorta el fondo según la forma del launcher del usuario).
+# Correr `dart run flutter_launcher_icons` después de cambiar cualquiera
+# de los dos archivos.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/icon.png"
+  remove_alpha_ios: true
+  adaptive_icon_background: "#6C63FF"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
 
 # El build.gradle publicado de flutter_nearby_connections_plus 1.2.2 usa
 # jcenter() (cerrado por Google en 2022) y un Android Gradle Plugin de
