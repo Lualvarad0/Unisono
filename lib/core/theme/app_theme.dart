@@ -60,8 +60,20 @@ class AppTheme {
           borderRadius: BorderRadius.circular(radio),
           borderSide: BorderSide.none,
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        // Más padding arriba que abajo: el label flotante (cuando el
+        // campo tiene foco o contenido) necesita ese aire para no quedar
+        // pegado al techo de la caja — sin esto se ve amontonado contra
+        // el título de sección de arriba en vez de flotar con margen
+        // propio.
+        contentPadding: const EdgeInsets.fromLTRB(16, 22, 16, 16),
+        // El hint ("Ej. Guitarra...") tiene que leerse claramente como un
+        // ejemplo, no como si ya hubiera algo escrito — opacidad baja lo
+        // distingue del texto real qué se escribe (contraste completo).
+        hintStyle: TextStyle(
+          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+        ),
+        labelStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+        floatingLabelStyle: TextStyle(color: colorScheme.primary),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(

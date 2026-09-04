@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:app_alabanzas/models/chordpro/chordpro_modelo.dart';
 import 'package:app_alabanzas/services/chordpro/chordpro_parser.dart';
 import 'package:app_alabanzas/services/chordpro/editor_simple.dart';
+import 'package:app_alabanzas/widgets/acciones_dialogo.dart';
 import 'package:app_alabanzas/widgets/linea_chordpro_widget.dart';
 
 /// Nombre para mostrar en el selector de tipo y etiqueta por defecto
@@ -16,20 +17,20 @@ const _nombreTipo = {
   TipoSeccion.otra: 'Verso',
 };
 
-/// Pantalla 10 (rediseñada): cargar la letra y los acordes de una alabanza
-/// sin que haga falta saber ChordPro. Por cada línea de la canción se
-/// piden dos cosas nada más — dónde van los acordes y qué dice la letra
-/// — igual que cualquiera ya escribiría una hoja de acordes a mano:
+/// Pantalla 10 (rediseñada de nuevo): se escribe la letra de cada línea
+/// una sola vez y los acordes se ubican tocando arriba de la palabra que
+/// corresponde — nada de dos cajas de texto paralelas para alinear a
+/// mano por espacios. Igual que cualquiera escribiría una hoja de
+/// acordes:
 ///
 /// ```
-/// G       D
+///     G       D
 /// Toda la tierra se inclina
 /// ```
 ///
-/// Acepta cifrado americano (C, D, Em) o español (Do, Re, Mim) en la
-/// misma entrada — `Acorde.parse` reconoce los dos. La conversión al
-/// modelo interno la hace `EditorSimpleConversor`; esta pantalla solo
-/// junta los datos y arma la vista previa.
+/// pero acá el acorde se toca y se escribe en un diálogo chico, no se
+/// cuentan espacios. Acepta cifrado americano (C, D, Em) o español (Do,
+/// Re, Mim) — `Acorde.parse` reconoce los dos.
 ///
 /// Devuelve el texto ChordPro final por `Navigator.pop<String>`, igual
 /// que el editor anterior — el resto de la app no sabe ni le importa
@@ -105,14 +106,11 @@ class _EditorSimpleScreenState extends State<EditorSimpleScreen> {
     for (final s in _secciones) {
       final lineas = s.lineas
           .where((l) =>
-              l.acordesController.text.trim().isNotEmpty ||
-              l.letraController.text.trim().isNotEmpty)
-          .map(
-            (l) => EditorSimpleConversor.aLinea(
-              l.acordesController.text,
-              l.letraController.text,
-            ),
-          )
+              l.acordesPorPosicion.isNotEmpty || l.letraController.text.trim().isNotEmpty)
+          .map((l) => EditorSimpleConversor.aLinea(
+                _lineaAcordesDesdePosiciones(l.acordesPorPosicion),
+                l.letraController.text,
+              ))
           .toList();
       if (lineas.isEmpty) continue;
       final etiqueta = s.etiquetaController.text.trim();
@@ -147,8 +145,8 @@ class _EditorSimpleScreenState extends State<EditorSimpleScreen> {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
           Text(
-            'Escribí los acordes arriba, alineados sobre la sílaba donde '
-            'cambian — como en cualquier hoja de acordes.',
+            'Escribí la letra de cada línea y tocá arriba de una palabra '
+            'para ponerle un acorde.',
             style: tema.textTheme.bodySmall
                 ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
           ),
@@ -189,6 +187,23 @@ class _EditorSimpleScreenState extends State<EditorSimpleScreen> {
       ),
     );
   }
+}
+
+/// Arma la misma "línea de acordes alineada por espacios" que ya sabía
+/// leer `EditorSimpleConversor.aLinea` — así la construcción del
+/// `LineaChordPro` final sigue siendo ese único camino ya probado
+/// (`editor_simple_test.dart`), en vez de reimplementar la lógica de
+/// segmentos acá con las posiciones tocadas en pantalla.
+String _lineaAcordesDesdePosiciones(Map<int, String> posiciones) {
+  final entradas = posiciones.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+  final buffer = StringBuffer();
+  for (final entrada in entradas) {
+    while (buffer.length < entrada.key) {
+      buffer.write(' ');
+    }
+    buffer.write(entrada.value);
+  }
+  return buffer.toString();
 }
 
 class _SeccionEditor extends StatelessWidget {
@@ -290,27 +305,77 @@ class _LineaEditor extends StatelessWidget {
 
   static const _estiloMono = TextStyle(fontFamily: 'monospace', fontSize: 15);
 
+  List<({int inicio, String palabra})> _palabras() => [
+        for (final m in RegExp(r'\S+').allMatches(linea.letraController.text))
+          (inicio: m.start, palabra: m.group(0)!),
+      ];
+
+  Future<void> _editarAcorde(BuildContext context, int posicion) async {
+    final tema = Theme.of(context);
+    final actual = linea.acordesPorPosicion[posicion];
+    final controller = TextEditingController(text: actual ?? '');
+    final resultado = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Acorde'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.characters,
+          style: _estiloMono,
+          decoration: const InputDecoration(
+            labelText: 'Acorde',
+            hintText: 'Ej. G, Em7, D/F#',
+          ),
+        ),
+        actions: [
+          if (actual != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(''),
+                  style: TextButton.styleFrom(
+                    foregroundColor: tema.colorScheme.error,
+                    alignment: Alignment.centerLeft,
+                  ),
+                  child: const Text('Quitar acorde'),
+                ),
+              ),
+            ),
+          AccionesDialogo(
+            textoSecundario: 'Cancelar',
+            onSecundario: () => Navigator.of(context).pop(),
+            textoPrimario: 'Guardar',
+            onPrimario: () => Navigator.of(context).pop(controller.text.trim()),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (resultado == null) return;
+    if (resultado.isEmpty) {
+      linea.acordesPorPosicion.remove(posicion);
+    } else {
+      linea.acordesPorPosicion[posicion] = resultado;
+    }
+    onCambiar();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    final palabras = _palabras();
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextField(
-                  controller: linea.acordesController,
-                  style: _estiloMono,
-                  decoration: const InputDecoration(
-                    labelText: 'Acordes (opcional)',
-                    hintText: 'G       D',
-                    isDense: true,
-                  ),
-                  onChanged: (_) => onCambiar(),
-                ),
-                const SizedBox(height: 4),
                 TextField(
                   controller: linea.letraController,
                   style: _estiloMono,
@@ -321,6 +386,53 @@ class _LineaEditor extends StatelessWidget {
                   ),
                   onChanged: (_) => onCambiar(),
                 ),
+                const SizedBox(height: 6),
+                if (palabras.isEmpty)
+                  TextButton.icon(
+                    onPressed: () => _editarAcorde(context, 0),
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Acorde (línea instrumental)'),
+                  )
+                else
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.end,
+                    children: [
+                      for (final palabra in palabras)
+                        InkWell(
+                          borderRadius: BorderRadius.circular(6),
+                          onTap: () => _editarAcorde(context, palabra.inicio),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  height: 18,
+                                  child: linea.acordesPorPosicion[palabra.inicio] != null
+                                      ? Text(
+                                          linea.acordesPorPosicion[palabra.inicio]!,
+                                          style: _estiloMono.copyWith(
+                                            color: tema.colorScheme.primary,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        )
+                                      : Icon(
+                                          Icons.add,
+                                          size: 14,
+                                          color: tema.colorScheme.onSurfaceVariant
+                                              .withValues(alpha: 0.4),
+                                        ),
+                                ),
+                                Text(palabra.palabra, style: _estiloMono),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -337,15 +449,18 @@ class _LineaEditor extends StatelessWidget {
 }
 
 class _LineaEditable {
-  _LineaEditable({String acordes = '', String letra = ''})
-      : acordesController = TextEditingController(text: acordes),
-        letraController = TextEditingController(text: letra);
+  _LineaEditable({String letra = '', Map<int, String>? acordesPorPosicion})
+      : letraController = TextEditingController(text: letra),
+        acordesPorPosicion = acordesPorPosicion ?? {};
 
-  final TextEditingController acordesController;
   final TextEditingController letraController;
 
+  /// Posición de caracter dentro de `letraController.text` -> texto del
+  /// acorde que va arriba de esa palabra. Se toca la palabra para
+  /// editarlo — ver `_LineaEditor._editarAcorde`.
+  final Map<int, String> acordesPorPosicion;
+
   void dispose() {
-    acordesController.dispose();
     letraController.dispose();
   }
 }
@@ -360,8 +475,15 @@ class _SeccionEditable {
   factory _SeccionEditable.desde(SeccionChordPro seccion) {
     final tipo = seccion.tipo == TipoSeccion.otra ? TipoSeccion.verso : seccion.tipo;
     final lineas = seccion.lineas.map((linea) {
+      // Reusa la conversión ya probada (línea de acordes alineada por
+      // espacios) y de ahí saca las posiciones de caracter — evita
+      // reimplementar la lógica de "dónde cae cada acorde" acá.
       final texto = EditorSimpleConversor.desdeLinea(linea);
-      return _LineaEditable(acordes: texto.acordes, letra: texto.letra);
+      final posiciones = <int, String>{
+        for (final m in RegExp(r'\S+').allMatches(texto.acordes))
+          m.start.clamp(0, texto.letra.length): m.group(0)!,
+      };
+      return _LineaEditable(letra: texto.letra, acordesPorPosicion: posiciones);
     }).toList();
     if (lineas.isEmpty) lineas.add(_LineaEditable());
     return _SeccionEditable._cargada(

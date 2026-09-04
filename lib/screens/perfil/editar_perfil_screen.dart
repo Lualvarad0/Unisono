@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:app_alabanzas/core/formato_fecha.dart';
 import 'package:app_alabanzas/models/miembro.dart';
 import 'package:app_alabanzas/repositories/miembro_repository.dart';
+import 'package:app_alabanzas/widgets/acciones_dialogo.dart';
 import 'package:app_alabanzas/widgets/encabezado_seccion.dart';
 
 /// Pantalla completa para editar el perfil propio — no un diálogo
@@ -72,13 +73,11 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
         title: const Text('¿Descartar cambios?'),
         content: const Text('Todavía no guardaste lo que editaste acá.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Seguir editando'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Descartar'),
+          AccionesDialogo(
+            textoSecundario: 'Seguir editando',
+            onSecundario: () => Navigator.of(context).pop(false),
+            textoPrimario: 'Descartar',
+            onPrimario: () => Navigator.of(context).pop(true),
           ),
         ],
       ),

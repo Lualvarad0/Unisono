@@ -8,6 +8,7 @@ import 'package:app_alabanzas/models/ritmo.dart';
 import 'package:app_alabanzas/screens/contenido/detectar_tonalidad_screen.dart';
 import 'package:app_alabanzas/screens/contenido/editor_chordpro_screen.dart';
 import 'package:app_alabanzas/screens/contenido/editor_simple_screen.dart';
+import 'package:app_alabanzas/widgets/acciones_dialogo.dart';
 import 'package:app_alabanzas/widgets/encabezado_seccion.dart';
 
 /// Géneros con los que arranca la colección `ritmos` la primera vez que se
@@ -27,12 +28,17 @@ const _generosPorDefecto = [
   'Instrumental',
 ];
 
-/// Pantalla 9: cargar una alabanza nueva. Sigue el flujo sugerido del
-/// diseño (Agregar → Editor → Detectar tono → Guardar), pero como
-/// pantalla única con secciones en vez de wizard de varios pasos — con
-/// solo 5 campos + el editor no hace falta partirlo en pantallas propias.
+/// Pantalla 9: cargar una alabanza — nueva o, si se pasa
+/// [cancionExistente], editar una que ya está en el repertorio (mismo
+/// patrón que `AgregarActividadScreen` con `actividadExistente`). Sigue
+/// el flujo sugerido del diseño (Agregar → Editor → Detectar tono →
+/// Guardar), pero como pantalla única con secciones en vez de wizard de
+/// varios pasos — con solo 5 campos + el editor no hace falta partirlo
+/// en pantallas propias.
 class AgregarAlabanzaScreen extends StatefulWidget {
-  const AgregarAlabanzaScreen({super.key});
+  const AgregarAlabanzaScreen({super.key, this.cancionExistente});
+
+  final Cancion? cancionExistente;
 
   @override
   State<AgregarAlabanzaScreen> createState() => _AgregarAlabanzaScreenState();
@@ -40,22 +46,36 @@ class AgregarAlabanzaScreen extends StatefulWidget {
 
 class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _tituloController = TextEditingController();
+  late final _tituloController =
+      TextEditingController(text: widget.cancionExistente?.titulo ?? '');
   final _artistaController = TextEditingController();
-  final _bpmController = TextEditingController();
-  final _compasController = TextEditingController();
+  late final _bpmController = TextEditingController(
+    text: widget.cancionExistente?.bpm?.toString() ?? '',
+  );
+  late final _compasController =
+      TextEditingController(text: widget.cancionExistente?.compas ?? '');
   final _etiquetaController = TextEditingController();
 
-  String _tono = 'C';
-  String _contenidoChordPro = '';
-  final List<String> _etiquetas = [];
-  String? _ritmoId;
+  late String _tono = widget.cancionExistente?.tonoOriginal ?? 'C';
+  late String _contenidoChordPro = widget.cancionExistente?.contenidoChordPro ?? '';
+  late final List<String> _etiquetas = [...?widget.cancionExistente?.etiquetas];
+  late String? _ritmoId = widget.cancionExistente?.ritmoId;
   bool _guardando = false;
+
+  bool get _editando => widget.cancionExistente != null;
 
   @override
   void initState() {
     super.initState();
     _sembrarGenerosPorDefecto();
+    final artistaId = widget.cancionExistente?.artistaId;
+    if (artistaId != null) _cargarNombreArtista(artistaId);
+  }
+
+  Future<void> _cargarNombreArtista(String artistaId) async {
+    final artista = await context.read<Repositorio<Artista>>().fetchById(artistaId);
+    if (!mounted || artista == null) return;
+    _artistaController.text = artista.nombre;
   }
 
   Future<void> _sembrarGenerosPorDefecto() async {
@@ -148,13 +168,11 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
           decoration: const InputDecoration(labelText: 'Nombre'),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('Agregar'),
+          AccionesDialogo(
+            textoSecundario: 'Cancelar',
+            onSecundario: () => Navigator.of(context).pop(),
+            textoPrimario: 'Agregar',
+            onPrimario: () => Navigator.of(context).pop(controller.text.trim()),
           ),
         ],
       ),
@@ -180,21 +198,24 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
     final cancionRepositorio = context.read<Repositorio<Cancion>>();
 
     final artistaId = await _resolverArtista(artistaRepositorio);
-    await cancionRepositorio.crear(
-          Cancion(
-            id: '',
-            titulo: _tituloController.text.trim(),
-            ritmoId: _ritmoId,
-            artistaId: artistaId,
-            tonoOriginal: _tono,
-            contenidoChordPro: _contenidoChordPro,
-            bpm: int.tryParse(_bpmController.text.trim()),
-            compas: _compasController.text.trim().isEmpty
-                ? null
-                : _compasController.text.trim(),
-            etiquetas: _etiquetas,
-          ),
-        );
+    final cancion = Cancion(
+      id: widget.cancionExistente?.id ?? '',
+      titulo: _tituloController.text.trim(),
+      ritmoId: _ritmoId,
+      artistaId: artistaId,
+      tonoOriginal: _tono,
+      contenidoChordPro: _contenidoChordPro,
+      bpm: int.tryParse(_bpmController.text.trim()),
+      compas: _compasController.text.trim().isEmpty
+          ? null
+          : _compasController.text.trim(),
+      etiquetas: _etiquetas,
+    );
+    if (_editando) {
+      await cancionRepositorio.actualizar(cancion.id, cancion);
+    } else {
+      await cancionRepositorio.crear(cancion);
+    }
 
     if (!mounted) return;
     Navigator.of(context).pop();
@@ -204,7 +225,9 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Nueva alabanza')),
+      appBar: AppBar(
+        title: Text(_editando ? 'Editar alabanza' : 'Nueva alabanza'),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -351,7 +374,7 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
                       height: 22,
                       child: CircularProgressIndicator(strokeWidth: 2.4),
                     )
-                  : const Text('Guardar alabanza'),
+                  : Text(_editando ? 'Guardar cambios' : 'Guardar alabanza'),
             ),
             const SizedBox(height: 4),
             Text(
