@@ -36,10 +36,10 @@ class Cancion extends Equatable {
   final String id;
   final String titulo;
 
-  /// Opcional: el diseño de "Agregar alabanza" usa etiquetas libres
-  /// (`etiquetas`) en vez de pedir un género fijo. `ritmoId` se conserva
-  /// para quien quiera seguir clasificando por género — `watchByRitmo`
-  /// sigue andando para las canciones que sí lo tengan.
+  /// Género musical (Adoración, Cumbia, Coritos, ...) — referencia a un
+  /// `Ritmo`. Opcional: una canción puede quedar sin clasificar. Distinto
+  /// de `etiquetas`, que es texto libre para lo que no encaja en un
+  /// género fijo (tema, ocasión, etc.).
   final String? ritmoId;
 
   /// null = "Varios" / sin artista específico.
