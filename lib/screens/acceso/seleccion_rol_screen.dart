@@ -5,6 +5,7 @@ import 'package:app_alabanzas/models/miembro.dart';
 import 'package:app_alabanzas/repositories/miembro_repository.dart';
 import 'package:app_alabanzas/screens/contenido/principal_shell_screen.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
+import 'package:app_alabanzas/services/invite_link_service.dart';
 
 /// Pantalla 5 del prototipo (Acceso). Aparece una sola vez por cuenta: la
 /// primera vez que alguien inicia sesión, hay que vincular esa cuenta de
@@ -33,9 +34,27 @@ class _SeleccionRolScreenState extends State<SeleccionRolScreen> {
   Future<_Estado> _cargar() async {
     final uid = context.read<AutenticacionService>().usuarioActual!.uid;
     final repositorio = context.read<MiembroRepository>();
+    // Se captura la referencia acá (no un BuildContext) para poder
+    // usarla después de los `await` de abajo sin el lint de contexto
+    // cruzando gaps async — es un ChangeNotifier de vida completa de la
+    // app, no algo atado al ciclo de vida de esta pantalla.
+    final invitaciones = context.read<InviteLinkService>();
 
     final yaVinculado = await repositorio.buscarPorUid(uid);
     if (yaVinculado != null) return _Estado.vinculado(yaVinculado);
+
+    // Si se llegó acá por un enlace de invitación (ver InviteLinkService),
+    // se salta la lista y se va directo a confirmar esa invitación
+    // puntual — a menos que alguien ya la haya reclamado antes (carrera
+    // rara, pero posible), en cuyo caso se cae al flujo normal.
+    final idInvitado = invitaciones.miembroIdPendiente;
+    if (idInvitado != null) {
+      final invitado = await repositorio.fetchById(idInvitado);
+      if (invitado != null && invitado.uid == null) {
+        return _Estado.invitacion(invitado);
+      }
+      invitaciones.limpiar();
+    }
 
     final todos = await repositorio.fetchAll();
     final sinReclamar = todos.where((m) => m.uid == null).toList();
@@ -50,9 +69,17 @@ class _SeleccionRolScreenState extends State<SeleccionRolScreen> {
     final repositorio = context.read<MiembroRepository>();
     await repositorio.actualizar(miembro.id, miembro.copyWith(uid: uid));
     if (!mounted) return;
+    context.read<InviteLinkService>().limpiar();
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const PrincipalShellScreen()),
     );
+  }
+
+  /// La invitación no era para quien la abrió — se descarta y se muestra
+  /// la lista normal, como si no hubiera llegado por un enlace.
+  void _noSoyYo() {
+    context.read<InviteLinkService>().limpiar();
+    setState(() => _futuro = _cargar());
   }
 
   Future<void> _crearNuevo({
@@ -89,6 +116,13 @@ class _SeleccionRolScreenState extends State<SeleccionRolScreen> {
           });
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
+        if (estado.miembroInvitado != null) {
+          return _ConfirmarInvitacion(
+            miembro: estado.miembroInvitado!,
+            onConfirmar: () => _reclamar(estado.miembroInvitado!),
+            onNoSoyYo: _noSoyYo,
+          );
+        }
         return estado.esPrimerUsuario
             ? _PrimerUsuario(onConfirmar: (nombre) => _crearNuevo(
                 nombre: nombre,
@@ -110,16 +144,105 @@ class _SeleccionRolScreenState extends State<SeleccionRolScreen> {
 class _Estado {
   const _Estado.vinculado(Miembro this.miembroVinculado)
       : sinReclamar = const [],
-        esPrimerUsuario = false;
+        esPrimerUsuario = false,
+        miembroInvitado = null;
 
   const _Estado.porElegir({
     required this.sinReclamar,
     required this.esPrimerUsuario,
-  }) : miembroVinculado = null;
+  })  : miembroVinculado = null,
+        miembroInvitado = null;
+
+  const _Estado.invitacion(Miembro this.miembroInvitado)
+      : miembroVinculado = null,
+        sinReclamar = const [],
+        esPrimerUsuario = false;
 
   final Miembro? miembroVinculado;
+  final Miembro? miembroInvitado;
   final List<Miembro> sinReclamar;
   final bool esPrimerUsuario;
+}
+
+/// Pantalla a la que llega directo quien abrió un enlace de invitación —
+/// se salta la lista de "¿Quién sos?" porque ya se sabe exactamente a
+/// quién está reclamando.
+class _ConfirmarInvitacion extends StatefulWidget {
+  const _ConfirmarInvitacion({
+    required this.miembro,
+    required this.onConfirmar,
+    required this.onNoSoyYo,
+  });
+
+  final Miembro miembro;
+  final VoidCallback onConfirmar;
+  final VoidCallback onNoSoyYo;
+
+  @override
+  State<_ConfirmarInvitacion> createState() => _ConfirmarInvitacionState();
+}
+
+class _ConfirmarInvitacionState extends State<_ConfirmarInvitacion> {
+  bool _enviando = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    final roles = widget.miembro.roles.map((r) => r.nombreVisible).join(' · ');
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Te invitaron al equipo',
+                style: tema.textTheme.bodyLarge
+                    ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '¿Sos ${widget.miembro.nombre}?',
+                style: tema.textTheme.headlineMedium
+                    ?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              if (roles.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Te vas a sumar como $roles.',
+                  style: tema.textTheme.bodyMedium
+                      ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+                ),
+              ],
+              const SizedBox(height: 28),
+              FilledButton(
+                onPressed: _enviando
+                    ? null
+                    : () {
+                        setState(() => _enviando = true);
+                        widget.onConfirmar();
+                      },
+                child: _enviando
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2.4),
+                      )
+                    : Text('Sí, soy ${widget.miembro.nombre}'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _enviando ? null : widget.onNoSoyYo,
+                child: const Text('No soy yo'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _PrimerUsuario extends StatefulWidget {

@@ -6,6 +6,7 @@ import 'package:app_alabanzas/core/firestore/repositorio.dart';
 import 'package:app_alabanzas/core/theme/app_theme.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
 import 'package:app_alabanzas/services/firestore_service.dart';
+import 'package:app_alabanzas/services/invite_link_service.dart';
 import 'package:app_alabanzas/screens/acceso/splash_screen.dart';
 import 'package:app_alabanzas/models/actividad.dart';
 import 'package:app_alabanzas/models/miembro.dart';
@@ -94,6 +95,9 @@ class _AppConProviders extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<AutenticacionService>(create: (_) => AutenticacionService()),
+        ChangeNotifierProvider<InviteLinkService>(
+          create: (_) => InviteLinkService()..iniciar(),
+        ),
         Provider<Repositorio<Ritmo>>(create: (_) => RitmoRepository()),
         Provider<Repositorio<Artista>>(create: (_) => ArtistaRepository()),
         // CancionRepository y MiembroRepository suman métodos que no son

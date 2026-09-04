@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.appalabanzas.app_alabanzas",
+      "sha256_cert_fingerprints": [
+        "48:86:2D:58:7A:38:B6:1F:81:15:CC:37:90:FC:46:E8:C4:47:AB:07:41:B8:53:E4:61:A9:67:55:E4:C0:B6:2D"
+      ]
+    }
+  }
+]
