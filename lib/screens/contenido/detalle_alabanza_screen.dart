@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:app_alabanzas/core/firestore/repositorio.dart';
 import 'package:app_alabanzas/models/nota.dart';
+import 'package:app_alabanzas/models/ritmo.dart';
 import 'package:app_alabanzas/repositories/nota_repository.dart';
 import 'package:app_alabanzas/screens/notas/agregar_nota_screen.dart';
 import 'package:app_alabanzas/models/cancion.dart';
@@ -52,10 +53,22 @@ class _DetalleAlabanzaScreenState extends State<DetalleAlabanzaScreen> {
           if (cancion == null) {
             return const Center(child: CircularProgressIndicator());
           }
-          return _Contenido(
-            cancion: cancion,
-            semitonos: _semitonos,
-            onCambiarTono: (nota) => _cambiarTono(cancion, nota),
+          return StreamBuilder<List<Ritmo>>(
+            stream: context.read<Repositorio<Ritmo>>().watchAll(),
+            builder: (context, snapshotGeneros) {
+              final genero = cancion.ritmoId == null
+                  ? null
+                  : (snapshotGeneros.data ?? const <Ritmo>[])
+                      .where((r) => r.id == cancion.ritmoId)
+                      .firstOrNull
+                      ?.nombre;
+              return _Contenido(
+                cancion: cancion,
+                genero: genero,
+                semitonos: _semitonos,
+                onCambiarTono: (nota) => _cambiarTono(cancion, nota),
+              );
+            },
           );
         },
       ),
@@ -70,11 +83,13 @@ extension<T> on Iterable<T> {
 class _Contenido extends StatelessWidget {
   const _Contenido({
     required this.cancion,
+    required this.genero,
     required this.semitonos,
     required this.onCambiarTono,
   });
 
   final Cancion cancion;
+  final String? genero;
   final int semitonos;
   final ValueChanged<String> onCambiarTono;
 
@@ -114,6 +129,12 @@ class _Contenido extends StatelessWidget {
                       Text('${cancion.bpm} BPM', style: tema.textTheme.bodyMedium),
                     if (cancion.compas != null)
                       Text(cancion.compas!, style: tema.textTheme.bodyMedium),
+                    if (genero != null)
+                      Chip(
+                        label: Text(genero!),
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
                   ],
                 ),
                 const SizedBox(height: 16),

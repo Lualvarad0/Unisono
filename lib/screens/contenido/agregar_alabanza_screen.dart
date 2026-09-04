@@ -4,10 +4,28 @@ import 'package:provider/provider.dart';
 import 'package:app_alabanzas/core/firestore/repositorio.dart';
 import 'package:app_alabanzas/models/artista.dart';
 import 'package:app_alabanzas/models/cancion.dart';
+import 'package:app_alabanzas/models/ritmo.dart';
 import 'package:app_alabanzas/screens/contenido/detectar_tonalidad_screen.dart';
 import 'package:app_alabanzas/screens/contenido/editor_chordpro_screen.dart';
 import 'package:app_alabanzas/screens/contenido/editor_simple_screen.dart';
 import 'package:app_alabanzas/widgets/encabezado_seccion.dart';
+
+/// Géneros con los que arranca la colección `ritmos` la primera vez que se
+/// abre este formulario y todavía está vacía — típicos de un repertorio de
+/// alabanza latinoamericano. El líder no está atado a esta lista: son solo
+/// los datos iniciales de una colección de Firestore común, así que sumar
+/// un género nuevo es tan simple como escribirlo (ver `_agregarGenero`).
+const _generosPorDefecto = [
+  'Adoración',
+  'Júbilo',
+  'Cumbia',
+  'Coritos',
+  'Balada',
+  'Salsa',
+  'Merengue',
+  'Rock cristiano',
+  'Instrumental',
+];
 
 /// Pantalla 9: cargar una alabanza nueva. Sigue el flujo sugerido del
 /// diseño (Agregar → Editor → Detectar tono → Guardar), pero como
@@ -31,7 +49,23 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
   String _tono = 'C';
   String _contenidoChordPro = '';
   final List<String> _etiquetas = [];
+  String? _ritmoId;
   bool _guardando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _sembrarGenerosPorDefecto();
+  }
+
+  Future<void> _sembrarGenerosPorDefecto() async {
+    final repositorio = context.read<Repositorio<Ritmo>>();
+    final existentes = await repositorio.fetchAll();
+    if (existentes.isNotEmpty) return;
+    for (final nombre in _generosPorDefecto) {
+      await repositorio.crear(Ritmo(id: '', nombre: nombre));
+    }
+  }
 
   @override
   void dispose() {
@@ -99,6 +133,39 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
     return repositorio.crear(Artista(id: '', nombre: nombre));
   }
 
+  /// Alta rápida de un género que no está en la lista — un diálogo chico
+  /// para una sola decisión puntual, no un formulario propio (a diferencia
+  /// de Editar perfil, que si es un dato central de cuenta).
+  Future<void> _agregarGenero(Repositorio<Ritmo> repositorio) async {
+    final controller = TextEditingController();
+    final nombre = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Nuevo género'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Nombre'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            child: const Text('Agregar'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (nombre == null || nombre.isEmpty || !mounted) return;
+    final id = await repositorio.crear(Ritmo(id: '', nombre: nombre));
+    if (!mounted) return;
+    setState(() => _ritmoId = id);
+  }
+
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
     if (_contenidoChordPro.trim().isEmpty) {
@@ -117,6 +184,7 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
           Cancion(
             id: '',
             titulo: _tituloController.text.trim(),
+            ritmoId: _ritmoId,
             artistaId: artistaId,
             tonoOriginal: _tono,
             contenidoChordPro: _contenidoChordPro,
@@ -201,6 +269,37 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 16),
+            Text('Género', style: tema.textTheme.labelLarge),
+            const SizedBox(height: 8),
+            StreamBuilder<List<Ritmo>>(
+              stream: context.read<Repositorio<Ritmo>>().watchAll(),
+              builder: (context, snapshot) {
+                final generos = [...snapshot.data ?? const <Ritmo>[]]
+                  ..sort((a, b) => a.nombre.compareTo(b.nombre));
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final genero in generos)
+                      ChoiceChip(
+                        label: Text(genero.nombre),
+                        selected: _ritmoId == genero.id,
+                        onSelected: (marcado) => setState(
+                          () => _ritmoId = marcado ? genero.id : null,
+                        ),
+                      ),
+                    ActionChip(
+                      avatar: const Icon(Icons.add, size: 18),
+                      label: const Text('Nuevo'),
+                      onPressed: () => _agregarGenero(
+                        context.read<Repositorio<Ritmo>>(),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 28),
             const EncabezadoSeccion('ETIQUETAS'),
