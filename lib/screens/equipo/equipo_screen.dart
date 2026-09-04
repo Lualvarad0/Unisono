@@ -6,6 +6,7 @@ import 'package:app_alabanzas/models/miembro.dart';
 import 'package:app_alabanzas/repositories/miembro_repository.dart';
 import 'package:app_alabanzas/screens/equipo/invitar_miembro_screen.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
+import 'package:app_alabanzas/widgets/acciones_dialogo.dart';
 
 /// "Mi equipo": la lista de integrantes con sus roles. Cualquiera la puede
 /// ver; solo quien tiene el rol Líder puede tocar a alguien para cambiarle
@@ -165,14 +166,11 @@ class _DialogoRolesState extends State<_DialogoRoles> {
         ],
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          onPressed: () =>
-              Navigator.of(context).pop(_seleccionados.toList()),
-          child: const Text('Guardar'),
+        AccionesDialogo(
+          textoSecundario: 'Cancelar',
+          onSecundario: () => Navigator.of(context).pop(),
+          textoPrimario: 'Guardar',
+          onPrimario: () => Navigator.of(context).pop(_seleccionados.toList()),
         ),
       ],
     );

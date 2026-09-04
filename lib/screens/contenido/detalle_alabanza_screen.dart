@@ -8,6 +8,7 @@ import 'package:app_alabanzas/repositories/nota_repository.dart';
 import 'package:app_alabanzas/screens/notas/agregar_nota_screen.dart';
 import 'package:app_alabanzas/models/cancion.dart';
 import 'package:app_alabanzas/models/chordpro/chordpro_modelo.dart';
+import 'package:app_alabanzas/screens/contenido/agregar_alabanza_screen.dart';
 import 'package:app_alabanzas/services/chordpro/chordpro_parser.dart';
 import 'package:app_alabanzas/widgets/linea_chordpro_widget.dart';
 
@@ -109,6 +110,17 @@ class _Contenido extends StatelessWidget {
         SliverAppBar(
           title: Text(cancion.titulo),
           floating: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Editar alabanza',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => AgregarAlabanzaScreen(cancionExistente: cancion),
+                ),
+              ),
+            ),
+          ],
         ),
         SliverToBoxAdapter(
           child: Padding(

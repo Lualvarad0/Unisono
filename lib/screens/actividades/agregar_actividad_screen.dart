@@ -8,6 +8,7 @@ import 'package:app_alabanzas/models/miembro.dart';
 import 'package:app_alabanzas/models/setlist_entry.dart';
 import 'package:app_alabanzas/repositories/actividad_repository.dart';
 import 'package:app_alabanzas/screens/actividades/actividad_utils.dart';
+import 'package:app_alabanzas/widgets/acciones_dialogo.dart';
 import 'package:app_alabanzas/widgets/encabezado_seccion.dart';
 
 /// Crear o editar una Actividad: nombre, fecha/hora, y el setlist —
@@ -375,12 +376,11 @@ class _DialogoEntradaSetlistState extends State<_DialogoEntradaSetlist> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(
+        AccionesDialogo(
+          textoSecundario: 'Cancelar',
+          onSecundario: () => Navigator.of(context).pop(),
+          textoPrimario: 'Agregar',
+          onPrimario: () => Navigator.of(context).pop(
             SetlistEntry(
               cancionId: _cancion.id,
               orden: 0,
@@ -388,7 +388,6 @@ class _DialogoEntradaSetlistState extends State<_DialogoEntradaSetlist> {
               tonoAsignado: _tonoAsignado,
             ),
           ),
-          child: const Text('Agregar'),
         ),
       ],
     );
