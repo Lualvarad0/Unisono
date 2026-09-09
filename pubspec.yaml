@@ -20,6 +20,10 @@ dependencies:
   cloud_firestore: ^5.4.4
   firebase_auth: ^5.3.1
 
+  # Foto de perfil: sube el archivo elegido a Storage y guarda solo la URL
+  # en el documento del Miembro (Firestore no es para archivos binarios).
+  firebase_storage: ^12.3.2
+
   # Tipografía del sistema de diseño (Nocturne): Inter para todo el texto.
   google_fonts: ^6.2.1
 
@@ -50,6 +54,18 @@ dependencies:
   # Captura el enlace de invitación (App Link) cuando el líder invita a
   # alguien — ver InviteLinkService y AndroidManifest.xml.
   app_links: ^7.2.1
+
+  # Preferencia de apariencia (tema, tamaño de letra, mostrar acordes) —
+  # ver AparienciaScreen. Es local al celular a propósito, no vive en
+  # Firestore: es una preferencia de lectura, no un dato del equipo.
+  shared_preferences: ^2.3.2
+
+  # Elegir/sacar la foto de perfil desde la galería o la cámara.
+  image_picker: ^1.1.2
+
+  # Pantalla completa encendida durante Vista en vivo — ver
+  # "Mantener pantalla encendida" en AparienciaScreen.
+  wakelock_plus: ^1.2.8
 
 dev_dependencies:
   flutter_test:

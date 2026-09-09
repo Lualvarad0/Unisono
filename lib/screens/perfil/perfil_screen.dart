@@ -5,15 +5,20 @@ import 'package:app_alabanzas/core/firestore/repositorio.dart';
 import 'package:app_alabanzas/core/theme/app_theme.dart';
 import 'package:app_alabanzas/models/miembro.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
+import 'package:app_alabanzas/services/foto_perfil_service.dart';
+import 'package:app_alabanzas/services/preferencias_service.dart';
 import 'package:app_alabanzas/screens/equipo/equipo_screen.dart';
 import 'package:app_alabanzas/screens/notas/mis_notas_screen.dart';
+import 'package:app_alabanzas/screens/perfil/acerca_de_screen.dart';
+import 'package:app_alabanzas/screens/perfil/apariencia_screen.dart';
 import 'package:app_alabanzas/screens/perfil/editar_perfil_screen.dart';
 
-/// Pestaña "Perfil": quién sos (nombre, correo, roles, datos personales)
-/// con edición completa en una pantalla propia — no un diálogo flotante,
-/// ver `EditarPerfilScreen` — más los accesos a Mi equipo/Mis notas y
-/// cerrar sesión, en formato lista de configuración (como Ajustes de
-/// iOS/Android) en vez de una pila de botones sueltos.
+/// Pestaña "Perfil": quién sos (nombre, correo, roles, datos personales,
+/// foto) con edición completa en una pantalla propia — no un diálogo
+/// flotante, ver `EditarPerfilScreen` — más los accesos a Mi equipo/Mis
+/// notas/Apariencia/Acerca de y cerrar sesión, en formato lista de
+/// configuración (como Ajustes de iOS/Android) en vez de una pila de
+/// botones sueltos.
 ///
 /// El correo es de Firebase Auth y no se edita acá — cambiarlo pide
 /// reautenticación y no es parte de este pedido.
@@ -40,27 +45,56 @@ class PerfilScreen extends StatelessWidget {
   }
 }
 
-class _Contenido extends StatelessWidget {
+class _Contenido extends StatefulWidget {
   const _Contenido({required this.miembro, required this.email});
 
   final Miembro? miembro;
   final String email;
 
   @override
+  State<_Contenido> createState() => _ContenidoState();
+}
+
+class _ContenidoState extends State<_Contenido> {
+  bool _subiendoFoto = false;
+
+  Future<void> _cambiarFoto() async {
+    final miembro = widget.miembro;
+    if (miembro == null) return;
+    setState(() => _subiendoFoto = true);
+    try {
+      final url =
+          await context.read<FotoPerfilService>().elegirYSubir(miembro.id);
+      if (url == null || !mounted) return;
+      await context
+          .read<Repositorio<Miembro>>()
+          .actualizar(miembro.id, miembro.copyWith(fotoUrl: url));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No pudimos subir la foto. Probá de nuevo.')),
+      );
+    } finally {
+      if (mounted) setState(() => _subiendoFoto = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
-    final miembro = this.miembro;
+    final miembro = widget.miembro;
     final nombre = miembro?.nombreCompleto ?? '';
     final iniciales =
         nombre.trim().isEmpty ? '?' : nombre.trim()[0].toUpperCase();
+    final preferencias = context.watch<PreferenciasService>();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
       children: [
         // Encabezado tipo "tarjeta de cuenta" — el mismo patrón que
         // Google/Apple usan arriba de sus pantallas de cuenta: avatar
-        // grande, nombre, correo, y el editar vive al lado, no como un
-        // botón aparte más abajo.
+        // grande arriba, datos personales debajo, y la edición vive en la
+        // lista de opciones (fila "Editar mi perfil"), no acá arriba.
         Card(
           margin: EdgeInsets.zero,
           child: Padding(
@@ -70,75 +104,53 @@ class _Contenido extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    CircleAvatar(
-                      radius: 32,
-                      backgroundColor: AppTheme.acento.withValues(alpha: 0.16),
-                      child: Text(
-                        iniciales,
-                        style: tema.textTheme.headlineSmall?.copyWith(
-                          color: tema.colorScheme.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                    _Avatar(
+                      iniciales: iniciales,
+                      fotoUrl: miembro?.fotoUrl,
+                      subiendo: _subiendoFoto,
                     ),
                     const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            nombre.isEmpty ? 'Sin nombre' : nombre,
-                            style: tema.textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            email,
-                            style: tema.textTheme.bodyMedium?.copyWith(
-                              color: tema.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          if (miembro != null) ...[
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 4,
-                              children: [
-                                if (miembro.roles.isEmpty)
-                                  Text(
-                                    'Sin rol asignado',
-                                    style: tema.textTheme.bodySmall?.copyWith(
-                                      color: tema.colorScheme.onSurfaceVariant,
-                                    ),
-                                  )
-                                else
-                                  for (final rol in miembro.roles)
-                                    Chip(
-                                      label: Text(rol.nombreVisible),
-                                      visualDensity: VisualDensity.compact,
-                                      materialTapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
                     if (miembro != null)
-                      IconButton(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                EditarPerfilScreen(miembro: miembro),
-                          ),
-                        ),
-                        icon: const Icon(Icons.edit_outlined),
-                        tooltip: 'Editar perfil',
+                      OutlinedButton(
+                        onPressed: _subiendoFoto ? null : _cambiarFoto,
+                        child: const Text('Cambiar foto'),
                       ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                Text(
+                  nombre.isEmpty ? 'Sin nombre' : nombre,
+                  style:
+                      tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  widget.email,
+                  style: tema.textTheme.bodyMedium
+                      ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+                ),
                 if (miembro != null) ...[
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      if (miembro.roles.isEmpty)
+                        Text(
+                          'Sin rol asignado',
+                          style: tema.textTheme.bodySmall?.copyWith(
+                            color: tema.colorScheme.onSurfaceVariant,
+                          ),
+                        )
+                      else
+                        for (final rol in miembro.roles)
+                          Chip(
+                            label: Text(rol.nombreVisible),
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -148,17 +160,15 @@ class _Contenido extends StatelessWidget {
                           child: LinearProgressIndicator(
                             value: miembro.progresoPerfil,
                             minHeight: 6,
-                            backgroundColor:
-                                tema.colorScheme.surfaceContainerHighest,
+                            backgroundColor: tema.colorScheme.surfaceContainerHighest,
                           ),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Text(
                         '${(miembro.progresoPerfil * 100).round()}%',
-                        style: tema.textTheme.bodySmall?.copyWith(
-                          color: tema.colorScheme.onSurfaceVariant,
-                        ),
+                        style: tema.textTheme.bodySmall
+                            ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -218,13 +228,28 @@ class _Contenido extends StatelessWidget {
         // Lista de opciones agrupada — mismo patrón visual que una
         // pantalla de Ajustes nativa: filas con ícono + título + flecha,
         // separadas por líneas finas, en vez de botones sueltos con
-        // borde propio cada uno.
+        // borde propio cada uno. "Acerca de" queda al final a propósito
+        // — es la última decisión que alguien busca en unos Ajustes,
+        // justo antes de Cerrar sesión (que queda en su propia tarjeta,
+        // separada por ser una acción distinta a las demás).
         Card(
           margin: EdgeInsets.zero,
           child: Column(
             children: ListTile.divideTiles(
               context: context,
               tiles: [
+                if (miembro != null)
+                  ListTile(
+                    leading: const Icon(Icons.manage_accounts_outlined),
+                    title: const Text('Editar mi perfil'),
+                    subtitle: const Text('Nombre, instrumento'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => EditarPerfilScreen(miembro: miembro),
+                      ),
+                    ),
+                  ),
                 ListTile(
                   leading: const Icon(Icons.groups_outlined),
                   title: const Text('Mi equipo'),
@@ -239,6 +264,46 @@ class _Contenido extends StatelessWidget {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const MisNotasScreen()),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.dark_mode_outlined),
+                  title: const Text('Apariencia'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        switch (preferencias.temaModo) {
+                          ThemeMode.system => 'Sistema',
+                          ThemeMode.light => 'Claro',
+                          ThemeMode.dark => 'Oscuro',
+                        },
+                        style: tema.textTheme.bodyMedium
+                            ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+                      ),
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AparienciaScreen()),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.info_outline),
+                  title: const Text('Acerca de Unísono'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'v1',
+                        style: tema.textTheme.bodyMedium
+                            ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+                      ),
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AcercaDeScreen()),
                   ),
                 ),
               ],
@@ -257,6 +322,52 @@ class _Contenido extends StatelessWidget {
             onTap: () => context.read<AutenticacionService>().cerrarSesion(),
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  const _Avatar({
+    required this.iniciales,
+    required this.fotoUrl,
+    required this.subiendo,
+  });
+
+  final String iniciales;
+  final String? fotoUrl;
+  final bool subiendo;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    return Stack(
+      children: [
+        CircleAvatar(
+          radius: 32,
+          backgroundColor: AppTheme.acento.withValues(alpha: 0.16),
+          backgroundImage: fotoUrl == null ? null : NetworkImage(fotoUrl!),
+          child: fotoUrl != null
+              ? null
+              : Text(
+                  iniciales,
+                  style: tema.textTheme.headlineSmall?.copyWith(
+                    color: tema.colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+        ),
+        if (subiendo)
+          Positioned.fill(
+            child: CircleAvatar(
+              backgroundColor: Colors.black.withValues(alpha: 0.45),
+              child: const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ),
+            ),
+          ),
       ],
     );
   }

@@ -43,6 +43,7 @@ class Miembro extends Equatable {
     this.telefono,
     this.instrumento,
     this.nivelInstrumento,
+    this.fotoUrl,
   });
 
   final String id;
@@ -70,6 +71,12 @@ class Miembro extends Equatable {
   final String? instrumento;
 
   final NivelInstrumento? nivelInstrumento;
+
+  /// URL de descarga en Firebase Storage — ver `FotoPerfilService`. `null`
+  /// mientras no se eligió ninguna: el avatar cae a las iniciales del
+  /// nombre (ver `_Avatar` en `perfil_screen.dart`), nunca a un ícono
+  /// genérico vacío.
+  final String? fotoUrl;
 
   String get nombreCompleto =>
       apellido.isEmpty ? nombre : '$nombre $apellido';
@@ -128,6 +135,7 @@ class Miembro extends Equatable {
               (n) => n.name == nivelRaw,
               orElse: () => NivelInstrumento.principiante,
             ),
+      fotoUrl: map['fotoUrl'] as String?,
     );
   }
 
@@ -142,6 +150,7 @@ class Miembro extends Equatable {
         'telefono': telefono,
         'instrumento': instrumento,
         'nivelInstrumento': nivelInstrumento?.name,
+        'fotoUrl': fotoUrl,
       };
 
   Miembro copyWith({
@@ -149,6 +158,8 @@ class Miembro extends Equatable {
     List<RolMiembro>? roles,
     String? uid,
     bool limpiarUid = false,
+    String? fotoUrl,
+    bool limpiarFoto = false,
   }) {
     return Miembro(
       id: id,
@@ -160,6 +171,7 @@ class Miembro extends Equatable {
       telefono: telefono,
       instrumento: instrumento,
       nivelInstrumento: nivelInstrumento,
+      fotoUrl: limpiarFoto ? null : (fotoUrl ?? this.fotoUrl),
     );
   }
 
@@ -179,5 +191,6 @@ class Miembro extends Equatable {
         telefono,
         instrumento,
         nivelInstrumento,
+        fotoUrl,
       ];
 }
