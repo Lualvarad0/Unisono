@@ -15,6 +15,10 @@
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- Foto de perfil, elegida de la galería — Android 13+ usa el Photo
+         Picker del sistema (sin este permiso); versiones anteriores sí lo
+         necesitan para leer la imagen elegida. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <application
         android:label="Unísono"
         android:name="${applicationName}"

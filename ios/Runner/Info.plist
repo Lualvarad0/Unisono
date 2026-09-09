@@ -38,6 +38,8 @@
 	<string>App Alabanzas usa la red local para sincronizar la letra y los acordes en vivo entre los celulares del equipo, sin necesidad de internet.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>App Alabanzas usa Bluetooth para encontrar y sincronizar con los otros celulares del equipo durante el servicio, sin necesidad de internet.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Unísono usa tu galería para elegir la foto de tu perfil.</string>
 	<key>UIRequiresPersistentWiFi</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

@@ -4,12 +4,14 @@ import 'package:google_fonts/google_fonts.dart';
 /// Sistema visual "Nocturne", tomado del prototipo de diseño (32
 /// pantallas): Inter en todo el texto, radios de 8px, y un acento blurple
 /// que se usa como línea/resplandor — nunca como relleno grande de fondo.
-/// Oscuro es la base (así está diseñado el prototipo) y es lo único que
-/// usa la app hoy — `AppAlabanzas` fija `theme: AppTheme.dark` sin seguir
-/// el modo del sistema, porque el diseño es oscuro siempre, no "oscuro si
-/// el celular está en oscuro". `AppTheme.light` queda definido para el
-/// día que se agregue un selector manual (ej. luz de sala en iOS), pero
-/// no se usa todavía.
+/// Oscuro sigue siendo la base del diseño, pero ahora hay tema claro
+/// también y el usuario elige Sistema/Claro/Oscuro desde Perfil →
+/// Apariencia — ver `PreferenciasService` y `AparienciaScreen`. Los dos
+/// comparten el mismo acento (`#6C63FF`, el mismo violeta del ícono de la
+/// app) para que se sigan viendo como la misma app en cualquiera de los
+/// dos modos; lo que cambia es la profundidad de las superficies: oscuro
+/// usa un negro con tinte violeta bien marcado entre fondo/tarjeta/campo,
+/// claro un blanco lavanda suave con la misma jerarquía.
 ///
 /// Las vistas de Músico y Cantante (Paso 5) parten de acá pero además
 /// suben el tamaño de letra puntual del bloque de la canción activa — dos
@@ -35,7 +37,10 @@ class AppTheme {
       brightness: brightness,
       error: error,
     ).copyWith(
-      surface: esOscuro ? const Color(0xFF14161F) : const Color(0xFFF7F7FB),
+      surface: esOscuro ? const Color(0xFF0F1120) : const Color(0xFFFAFAFE),
+      surfaceContainer: esOscuro ? const Color(0xFF191C2E) : const Color(0xFFF0F0F8),
+      surfaceContainerHighest:
+          esOscuro ? const Color(0xFF262A42) : const Color(0xFFE7E7F3),
     );
 
     final textTheme = GoogleFonts.interTextTheme(

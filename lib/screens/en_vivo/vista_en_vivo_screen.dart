@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:app_alabanzas/core/firestore/repositorio.dart';
 import 'package:app_alabanzas/models/actividad.dart';
@@ -10,6 +11,7 @@ import 'package:app_alabanzas/repositories/miembro_repository.dart';
 import 'package:app_alabanzas/screens/actividades/actividad_utils.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
 import 'package:app_alabanzas/services/chordpro/chordpro_parser.dart';
+import 'package:app_alabanzas/services/preferencias_service.dart';
 
 extension<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
@@ -51,7 +53,20 @@ class _VistaEnVivoScreenState extends State<VistaEnVivoScreen> {
   final _paginaController = PageController();
 
   @override
+  void initState() {
+    super.initState();
+    // "Mantener pantalla encendida" (Perfil → Apariencia) solo aplica
+    // acá — la app en cualquier otra pantalla respeta el apagado normal
+    // del celular. Se apaga solo al salir (`dispose`), nunca queda
+    // prendida de más aunque la preferencia esté activa.
+    if (context.read<PreferenciasService>().mantenerPantallaEncendida) {
+      WakelockPlus.enable();
+    }
+  }
+
+  @override
   void dispose() {
+    WakelockPlus.disable();
     _paginaController.dispose();
     super.dispose();
   }
@@ -77,6 +92,7 @@ class _VistaEnVivoScreenState extends State<VistaEnVivoScreen> {
   @override
   Widget build(BuildContext context) {
     final uid = context.read<AutenticacionService>().usuarioActual?.uid;
+    final preferencias = context.watch<PreferenciasService>();
     return Scaffold(
       body: FutureBuilder<Miembro?>(
         future: uid == null
@@ -84,8 +100,12 @@ class _VistaEnVivoScreenState extends State<VistaEnVivoScreen> {
             : context.read<MiembroRepository>().buscarPorUid(uid),
         builder: (context, snapshotYo) {
           final roles = snapshotYo.data?.roles ?? const <RolMiembro>[];
-          final mostrarAcordes =
+          final puedeVerAcordes =
               roles.contains(RolMiembro.musico) || roles.contains(RolMiembro.lider);
+          // El permiso por rol manda primero (Cantante nunca ve acordes);
+          // la preferencia personal solo puede apagarlos para quien sí
+          // podría verlos, no encenderlos para quien no debería.
+          final mostrarAcordes = puedeVerAcordes && preferencias.mostrarAcordes;
           return StreamBuilder<Cancion?>(
             stream: context
                 .read<Repositorio<Cancion>>()
@@ -128,6 +148,7 @@ class _VistaEnVivoScreenState extends State<VistaEnVivoScreen> {
                         : transponerTono(cancion.tonoOriginal, entrada.tonoAsignado),
                     secciones: cancionChordPro.secciones,
                     mostrarAcordes: mostrarAcordes,
+                    tamanoLetra: preferencias.tamanoLetra,
                     paginaController: _paginaController,
                     siguiendoLider: siguiendoLider,
                     esLider: widget.esLider,
@@ -152,6 +173,7 @@ class _Lector extends StatefulWidget {
     required this.tonoResultante,
     required this.secciones,
     required this.mostrarAcordes,
+    required this.tamanoLetra,
     required this.paginaController,
     required this.siguiendoLider,
     required this.esLider,
@@ -163,6 +185,7 @@ class _Lector extends StatefulWidget {
   final String tonoResultante;
   final List<SeccionChordPro> secciones;
   final bool mostrarAcordes;
+  final TamanoLetra tamanoLetra;
   final PageController paginaController;
   final bool siguiendoLider;
   final bool esLider;
@@ -227,6 +250,7 @@ class _LectorState extends State<_Lector> {
               itemBuilder: (context, i) => _SeccionEnVivo(
                 seccion: widget.secciones[i],
                 mostrarAcordes: widget.mostrarAcordes,
+                tamanoLetra: widget.tamanoLetra,
               ),
             ),
           ),
@@ -348,18 +372,29 @@ class _BotonSeccion extends StatelessWidget {
 }
 
 /// Una sección completa (Verso 1, Coro, ...) a pantalla — letra grande
-/// (26–40px según cuánto entre) con el acorde chico arriba de cada
-/// palabra si `mostrarAcordes`, o solo la letra si no.
+/// (22–40px según el "Tamaño de letra" de Perfil → Apariencia) con el
+/// acorde chico arriba de cada palabra si `mostrarAcordes`, o solo la
+/// letra si no.
 class _SeccionEnVivo extends StatelessWidget {
-  const _SeccionEnVivo({required this.seccion, required this.mostrarAcordes});
+  const _SeccionEnVivo({
+    required this.seccion,
+    required this.mostrarAcordes,
+    required this.tamanoLetra,
+  });
 
   final SeccionChordPro seccion;
   final bool mostrarAcordes;
+  final TamanoLetra tamanoLetra;
 
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
-    final tamanoLetra = seccion.lineas.length > 6 ? 26.0 : 34.0;
+    // Secciones largas se achican un poco para no desbordar la pantalla
+    // — mismo criterio que antes, ahora relativo al tamaño elegido en
+    // vez de a dos valores fijos.
+    final tamanoBase = tamanoLetra.tamanoBaseLetra;
+    final tamanoLetraFinal =
+        seccion.lineas.length > 6 ? tamanoBase - 8 : tamanoBase;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Column(
@@ -403,7 +438,7 @@ class _SeccionEnVivo extends StatelessWidget {
                                   ),
                                   Text(
                                     segmento.letra,
-                                    style: TextStyle(fontSize: tamanoLetra, height: 1.3),
+                                    style: TextStyle(fontSize: tamanoLetraFinal, height: 1.3),
                                   ),
                                 ],
                               ),
@@ -412,7 +447,7 @@ class _SeccionEnVivo extends StatelessWidget {
                     )
                   : Text(
                       linea.soloLetra,
-                      style: TextStyle(fontSize: tamanoLetra, height: 1.3),
+                      style: TextStyle(fontSize: tamanoLetraFinal, height: 1.3),
                     ),
             ),
         ],

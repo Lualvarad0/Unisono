@@ -6,7 +6,9 @@ import 'package:app_alabanzas/core/firestore/repositorio.dart';
 import 'package:app_alabanzas/core/theme/app_theme.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
 import 'package:app_alabanzas/services/firestore_service.dart';
+import 'package:app_alabanzas/services/foto_perfil_service.dart';
 import 'package:app_alabanzas/services/invite_link_service.dart';
+import 'package:app_alabanzas/services/preferencias_service.dart';
 import 'package:app_alabanzas/screens/acceso/splash_screen.dart';
 import 'package:app_alabanzas/models/actividad.dart';
 import 'package:app_alabanzas/models/miembro.dart';
@@ -45,10 +47,12 @@ class AppAlabanzas extends StatefulWidget {
 
 class _AppAlabanzasState extends State<AppAlabanzas> {
   late Future<void> _inicializacion = _inicializarFirebase();
+  PreferenciasService? _preferencias;
 
   Future<void> _inicializarFirebase() async {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     configurarFirestore();
+    _preferencias = await PreferenciasService.cargar();
   }
 
   void _reintentar() {
@@ -66,7 +70,7 @@ class _AppAlabanzasState extends State<AppAlabanzas> {
         if (snapshot.hasError) {
           return _ArranqueFallido(onReintentar: _reintentar);
         }
-        return const _AppConProviders();
+        return _AppConProviders(preferencias: _preferencias!);
       },
     );
   }
@@ -88,7 +92,9 @@ class _AppAlabanzasState extends State<AppAlabanzas> {
 /// futuras cruzan capas — por ejemplo, armar un setlist necesita elegir
 /// canciones.
 class _AppConProviders extends StatelessWidget {
-  const _AppConProviders();
+  const _AppConProviders({required this.preferencias});
+
+  final PreferenciasService preferencias;
 
   @override
   Widget build(BuildContext context) {
@@ -98,6 +104,8 @@ class _AppConProviders extends StatelessWidget {
         ChangeNotifierProvider<InviteLinkService>(
           create: (_) => InviteLinkService()..iniciar(),
         ),
+        ChangeNotifierProvider<PreferenciasService>.value(value: preferencias),
+        Provider<FotoPerfilService>(create: (_) => FotoPerfilService()),
         Provider<Repositorio<Ritmo>>(create: (_) => RitmoRepository()),
         Provider<Repositorio<Artista>>(create: (_) => ArtistaRepository()),
         // CancionRepository y MiembroRepository suman métodos que no son
@@ -130,11 +138,15 @@ class _AppConProviders extends StatelessWidget {
           create: (context) => context.read<EjercicioRepository>(),
         ),
       ],
-      child: MaterialApp(
-        title: 'Unísono',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.dark,
-        home: const SplashScreen(),
+      child: Consumer<PreferenciasService>(
+        builder: (context, preferencias, _) => MaterialApp(
+          title: 'Unísono',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: preferencias.temaModo,
+          home: const SplashScreen(),
+        ),
       ),
     );
   }

@@ -7,6 +7,7 @@ import 'package:app_alabanzas/models/miembro.dart';
 import 'package:app_alabanzas/repositories/miembro_repository.dart';
 import 'package:app_alabanzas/widgets/acciones_dialogo.dart';
 import 'package:app_alabanzas/widgets/encabezado_seccion.dart';
+import 'package:app_alabanzas/widgets/selector_segmentado.dart';
 
 /// Pantalla completa para editar el perfil propio — no un diálogo
 /// flotante: entra con la flecha de volver como cualquier otra pantalla
@@ -102,6 +103,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
       telefono: telefono.isEmpty ? null : telefono,
       instrumento: instrumento.isEmpty ? null : instrumento,
       nivelInstrumento: _nivel,
+      fotoUrl: widget.miembro.fotoUrl,
     );
     await repositorio.actualizar(widget.miembro.id, actualizado);
     if (!mounted) return;
@@ -182,41 +184,26 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
             const SizedBox(height: 16),
             Text('Nivel', style: tema.textTheme.labelLarge),
             const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final nivel in NivelInstrumento.values)
-                  ChoiceChip(
-                    label: Text(nivel.nombreVisible),
-                    selected: _nivel == nivel,
-                    // Tocar el nivel ya seleccionado lo destilda — "nivel"
-                    // es de a uno, pero no tiene por qué ser obligatorio.
-                    onSelected: (marcado) =>
-                        setState(() => _nivel = marcado ? nivel : null),
-                  ),
-              ],
+            SelectorSegmentado<NivelInstrumento?>(
+              opciones: NivelInstrumento.values,
+              etiqueta: (nivel) => nivel!.nombreVisible,
+              valor: _nivel,
+              onCambiar: (nivel) => setState(() => _nivel = nivel),
             ),
             const SizedBox(height: 28),
             const EncabezadoSeccion('ROLES'),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final rol in RolMiembro.values)
-                  FilterChip(
-                    label: Text(rol.nombreVisible),
-                    selected: _roles.contains(rol),
-                    onSelected: (marcado) => setState(() {
-                      if (marcado) {
-                        _roles.add(rol);
-                      } else {
-                        _roles.remove(rol);
-                      }
-                    }),
-                  ),
-              ],
+            SelectorSegmentadoMultiple<RolMiembro>(
+              opciones: RolMiembro.values,
+              etiqueta: (rol) => rol.nombreVisible,
+              valores: _roles,
+              onCambiar: (rol) => setState(() {
+                if (_roles.contains(rol)) {
+                  _roles.remove(rol);
+                } else {
+                  _roles.add(rol);
+                }
+              }),
             ),
             const SizedBox(height: 28),
             FilledButton(
