@@ -311,49 +311,11 @@ class _LineaEditor extends StatelessWidget {
       ];
 
   Future<void> _editarAcorde(BuildContext context, int posicion) async {
-    final tema = Theme.of(context);
     final actual = linea.acordesPorPosicion[posicion];
-    final controller = TextEditingController(text: actual ?? '');
     final resultado = await showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Acorde'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.characters,
-          style: _estiloMono,
-          decoration: const InputDecoration(
-            labelText: 'Acorde',
-            hintText: 'Ej. G, Em7, D/F#',
-          ),
-        ),
-        actions: [
-          if (actual != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () => Navigator.of(context).pop(''),
-                  style: TextButton.styleFrom(
-                    foregroundColor: tema.colorScheme.error,
-                    alignment: Alignment.centerLeft,
-                  ),
-                  child: const Text('Quitar acorde'),
-                ),
-              ),
-            ),
-          AccionesDialogo(
-            textoSecundario: 'Cancelar',
-            onSecundario: () => Navigator.of(context).pop(),
-            textoPrimario: 'Guardar',
-            onPrimario: () => Navigator.of(context).pop(controller.text.trim()),
-          ),
-        ],
-      ),
+      builder: (_) => _DialogoAcorde(valorInicial: actual),
     );
-    controller.dispose();
     if (resultado == null) return;
     if (resultado.isEmpty) {
       linea.acordesPorPosicion.remove(posicion);
@@ -444,6 +406,75 @@ class _LineaEditor extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// El campo del diálogo vive en su propio `StatefulWidget` (en vez de un
+/// `TextEditingController` local a `_editarAcorde` que se descartaba a
+/// mano justo después del `await showDialog`) porque ese `dispose()`
+/// manual corría antes de que terminara la animación de salida del
+/// diálogo — el `TextField` todavía montado usaba el controller ya
+/// descartado y tiraba "A TextEditingController was used after being
+/// disposed." Acá Flutter llama a `dispose()` recién cuando el elemento
+/// realmente se desmonta, ya sincronizado con esa animación.
+class _DialogoAcorde extends StatefulWidget {
+  const _DialogoAcorde({this.valorInicial});
+
+  final String? valorInicial;
+
+  @override
+  State<_DialogoAcorde> createState() => _DialogoAcordeState();
+}
+
+class _DialogoAcordeState extends State<_DialogoAcorde> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.valorInicial ?? '');
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    return AlertDialog(
+      title: const Text('Acorde'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.characters,
+        style: _LineaEditor._estiloMono,
+        decoration: const InputDecoration(
+          labelText: 'Acorde',
+          hintText: 'Ej. G, Em7, D/F#',
+        ),
+      ),
+      actions: [
+        if (widget.valorInicial != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(''),
+                style: TextButton.styleFrom(
+                  foregroundColor: tema.colorScheme.error,
+                  alignment: Alignment.centerLeft,
+                ),
+                child: const Text('Quitar acorde'),
+              ),
+            ),
+          ),
+        AccionesDialogo(
+          textoSecundario: 'Cancelar',
+          onSecundario: () => Navigator.of(context).pop(),
+          textoPrimario: 'Guardar',
+          onPrimario: () => Navigator.of(context).pop(_controller.text.trim()),
+        ),
+      ],
     );
   }
 }
