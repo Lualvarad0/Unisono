@@ -231,13 +231,12 @@ class _LectorState extends State<_Lector> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left),
-                  iconSize: 32,
+                _BotonSeccion(
+                  icon: Icons.chevron_left,
                   onPressed: _paginaActual == 0
                       ? null
                       : () => widget.paginaController.previousPage(
@@ -245,18 +244,13 @@ class _LectorState extends State<_Lector> {
                             curve: Curves.easeInOut,
                           ),
                 ),
-                SizedBox(
-                  width: 64,
-                  child: Text(
-                    '${_paginaActual + 1} / ${widget.secciones.length}',
-                    textAlign: TextAlign.center,
-                    style: tema.textTheme.bodyMedium
-                        ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
-                  ),
+                Text(
+                  '${_paginaActual + 1} / ${widget.secciones.length}',
+                  style: tema.textTheme.titleMedium
+                      ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  iconSize: 32,
+                _BotonSeccion(
+                  icon: Icons.chevron_right,
                   onPressed: _paginaActual >= widget.secciones.length - 1
                       ? null
                       : () => widget.paginaController.nextPage(
@@ -324,6 +318,30 @@ class _Encabezado extends StatelessWidget {
           else if (siguiendoLider)
             Icon(Icons.sync, size: 20, color: tema.colorScheme.onSurfaceVariant),
         ],
+      ),
+    );
+  }
+}
+
+/// Botón para pasar de sección durante el show — grande y con fondo
+/// sólido a propósito, no un `IconButton` chico: quien lo toca está
+/// tocando un instrumento a la vez, mirando de reojo, sin apuntar con
+/// precisión.
+class _BotonSeccion extends StatelessWidget {
+  const _BotonSeccion({required this.icon, required this.onPressed});
+
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton.filledTonal(
+      icon: Icon(icon),
+      iconSize: 36,
+      onPressed: onPressed,
+      style: IconButton.styleFrom(
+        minimumSize: const Size(72, 72),
+        shape: const CircleBorder(),
       ),
     );
   }
