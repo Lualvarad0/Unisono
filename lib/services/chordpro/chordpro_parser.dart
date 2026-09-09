@@ -7,7 +7,9 @@ import 'package:app_alabanzas/models/chordpro/chordpro_modelo.dart';
 ///
 /// Reconoce las directivas estándar de sección, en su forma larga y corta:
 /// `start_of_verse`/`sov`, `start_of_chorus`/`soc`, `start_of_bridge`/`sob`,
-/// `start_of_tag`/`sot`, y sus `end_of_*`/`eo*` correspondientes.
+/// `start_of_tag`/`sot`, y sus `end_of_*`/`eo*` correspondientes. También
+/// `start_of_prechorus`/`sopc` (y su cierre), que no es parte del spec
+/// oficial — ver doc de `TipoSeccion.preCoro`.
 ///
 /// Cualquier otra directiva entre llaves (`{title: ...}`, `{key: ...}`,
 /// `{comment: ...}`, etc.) se ignora a propósito: esos metadatos ya viven
@@ -24,6 +26,8 @@ class ChordProParser {
   static const _directivasInicio = {
     'start_of_verse': TipoSeccion.verso,
     'sov': TipoSeccion.verso,
+    'start_of_prechorus': TipoSeccion.preCoro,
+    'sopc': TipoSeccion.preCoro,
     'start_of_chorus': TipoSeccion.coro,
     'soc': TipoSeccion.coro,
     'start_of_bridge': TipoSeccion.puente,
@@ -34,6 +38,7 @@ class ChordProParser {
 
   static const _directivasFin = {
     'end_of_verse', 'eov', //
+    'end_of_prechorus', 'eopc', //
     'end_of_chorus', 'eoc', //
     'end_of_bridge', 'eob', //
     'end_of_tag', 'eot', //
@@ -41,6 +46,7 @@ class ChordProParser {
 
   static const _etiquetaPorDefecto = {
     TipoSeccion.verso: 'Verso',
+    TipoSeccion.preCoro: 'Pre-Coro',
     TipoSeccion.coro: 'Coro',
     TipoSeccion.puente: 'Puente',
     TipoSeccion.tag: 'Tag',

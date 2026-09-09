@@ -10,12 +10,15 @@ import 'package:app_alabanzas/screens/contenido/detalle_alabanza_screen.dart';
 
 /// Pantalla 7 del prototipo: buscar y navegar el repertorio completo.
 ///
-/// El diseño original tiene chips "Todas / Recientes / Favoritas /
-/// Descargadas" — acá solo queda "Todas" con buscador. Favoritas y
-/// Descargadas necesitan datos que el modelo todavía no trackea (favorito
-/// por usuario, disponibilidad offline por canción) y "Recientes" no tiene
-/// sentido sin una fecha de carga guardada — agregar esos chips sin la
-/// data real de atrás sería una UI que miente.
+/// Sin buscar nada todavía, se explora por género con cuadros de colores
+/// (a la Spotify) en vez de una lista larga de entrada — cada cuadro dice
+/// cuántas alabanzas tiene y marca "NUEVO" si alguna se cargó hace poco.
+/// Al tocar un género, o al escribir en el buscador, aparece la lista de
+/// alabanzas de ese recorte — agrupada por artista si hay más de uno, o
+/// plana (para buscar por nombre) si no. "Favoritas" y "Descargadas" del
+/// diseño original quedan afuera: necesitan datos que el modelo todavía no
+/// trackea (favorito por usuario, disponibilidad offline por canción) —
+/// agregar esos chips sin la data real de atrás sería una UI que miente.
 class RepertorioScreen extends StatefulWidget {
   const RepertorioScreen({super.key});
 
@@ -27,11 +30,33 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
   final _busquedaController = TextEditingController();
   String _busqueda = '';
   String? _generoFiltro;
+  bool _explorando = true;
 
   @override
   void dispose() {
     _busquedaController.dispose();
     super.dispose();
+  }
+
+  void _elegirGenero(String id) {
+    setState(() {
+      _generoFiltro = id;
+      _explorando = false;
+    });
+  }
+
+  void _verTodas() {
+    setState(() {
+      _generoFiltro = null;
+      _explorando = false;
+    });
+  }
+
+  void _volverAExplorar() {
+    setState(() {
+      _generoFiltro = null;
+      _explorando = true;
+    });
   }
 
   @override
@@ -69,33 +94,22 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
                   ),
                 ),
               ),
-              if (generos.isNotEmpty)
+              if (_busqueda.isEmpty && _generoFiltro != null)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                  child: SizedBox(
-                    height: 36,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: generos.length + 1,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, i) {
-                        if (i == 0) {
-                          return ChoiceChip(
-                            label: const Text('Todas'),
-                            selected: _generoFiltro == null,
-                            onSelected: (_) =>
-                                setState(() => _generoFiltro = null),
-                          );
-                        }
-                        final genero = generos[i - 1];
-                        return ChoiceChip(
-                          label: Text(genero.nombre),
-                          selected: _generoFiltro == genero.id,
-                          onSelected: (_) =>
-                              setState(() => _generoFiltro = genero.id),
-                        );
-                      },
-                    ),
+                  padding: const EdgeInsets.fromLTRB(12, 0, 20, 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        tooltip: 'Volver a géneros',
+                        onPressed: _volverAExplorar,
+                      ),
+                      Text(
+                        generosPorId[_generoFiltro] ?? '',
+                        style: tema.textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ],
                   ),
                 ),
               Expanded(
@@ -105,7 +119,18 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
                     if (!snapshotCanciones.hasData) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    var canciones = snapshotCanciones.data!;
+                    final todas = snapshotCanciones.data!;
+
+                    if (_busqueda.isEmpty && _generoFiltro == null && _explorando) {
+                      return _ExplorarGeneros(
+                        generos: generos,
+                        canciones: todas,
+                        onElegirGenero: _elegirGenero,
+                        onVerTodas: _verTodas,
+                      );
+                    }
+
+                    var canciones = todas;
                     if (_busqueda.isNotEmpty) {
                       final termino = _busqueda.toLowerCase();
                       canciones = canciones
@@ -120,9 +145,7 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
                     if (canciones.isEmpty) {
                       return Center(
                         child: Text(
-                          _busqueda.isEmpty && _generoFiltro == null
-                              ? 'Todavía no hay alabanzas cargadas.'
-                              : 'Ninguna alabanza coincide con el filtro.',
+                          'Ninguna alabanza coincide con el filtro.',
                           style: tema.textTheme.bodyMedium,
                         ),
                       );
@@ -139,29 +162,29 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
                             ? 'Varios'
                             : (artistasPorId[c.artistaId] ?? 'Varios');
 
-                        // Con un género elegido, "Ritmo -> Artista ->
-                        // Canción" (ver doc de Ritmo) deja de ser solo un
-                        // filtro: agrupa la lista por artista, así el
-                        // repertorio de ese género se navega en dos
-                        // niveles en vez de una lista plana larga.
-                        if (_generoFiltro == null) {
-                          return ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
-                            itemCount: canciones.length,
-                            itemBuilder: (context, index) => _TarjetaCancion(
-                              cancion: canciones[index],
-                              artista: nombreArtista(canciones[index]),
-                              genero: generosPorId[canciones[index].ritmoId],
-                            ),
-                          );
-                        }
-
                         final porArtista = <String, List<Cancion>>{};
                         for (final cancion in canciones) {
                           porArtista
                               .putIfAbsent(nombreArtista(cancion), () => [])
                               .add(cancion);
                         }
+                        // Con un solo grupo (todo "Varios", o un solo
+                        // artista) la agrupación no suma nada — queda
+                        // como lista plana, buscable por nombre.
+                        if (porArtista.length <= 1) {
+                          final ordenadas = [...canciones]
+                            ..sort((a, b) => a.titulo.compareTo(b.titulo));
+                          return ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
+                            itemCount: ordenadas.length,
+                            itemBuilder: (context, index) => _TarjetaCancion(
+                              cancion: ordenadas[index],
+                              artista: nombreArtista(ordenadas[index]),
+                              genero: generosPorId[ordenadas[index].ritmoId],
+                            ),
+                          );
+                        }
+
                         final artistasOrdenados = porArtista.keys.toList()
                           ..sort();
 
@@ -199,6 +222,186 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// Cuadrícula de géneros de dos columnas, un cuadro de color por género —
+/// la pantalla de entrada al repertorio en vez de una lista plana larga.
+class _ExplorarGeneros extends StatelessWidget {
+  const _ExplorarGeneros({
+    required this.generos,
+    required this.canciones,
+    required this.onElegirGenero,
+    required this.onVerTodas,
+  });
+
+  final List<Ritmo> generos;
+  final List<Cancion> canciones;
+  final ValueChanged<String> onElegirGenero;
+  final VoidCallback onVerTodas;
+
+  /// Paleta fija, un color por posición en la grilla — no depende del
+  /// nombre del género así que no hace falta mantenerla sincronizada con
+  /// qué géneros existen.
+  static const _colores = [
+    Color(0xFFE91429),
+    Color(0xFF1E3264),
+    Color(0xFF8D67AB),
+    Color(0xFF148A08),
+    Color(0xFFE8115B),
+    Color(0xFFBA5D07),
+    Color(0xFF477D95),
+    Color(0xFF509BF5),
+  ];
+
+  static bool _esNueva(Cancion c) =>
+      c.creadaEn != null &&
+      DateTime.now().difference(c.creadaEn!) <= const Duration(days: 7);
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    final conCanciones = [
+      for (final genero in generos)
+        if (canciones.any((c) => c.ritmoId == genero.id)) genero,
+    ];
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Explorar por género',
+              style: tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            TextButton(onPressed: onVerTodas, child: const Text('Ver todas')),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (conCanciones.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Text(
+              'Todavía no hay alabanzas cargadas.',
+              style: tema.textTheme.bodyMedium
+                  ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+            ),
+          )
+        else
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: conCanciones.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1.7,
+            ),
+            itemBuilder: (context, i) {
+              final genero = conCanciones[i];
+              final delGenero =
+                  canciones.where((c) => c.ritmoId == genero.id).toList();
+              return _TarjetaGenero(
+                nombre: genero.nombre,
+                cantidad: delGenero.length,
+                color: _colores[i % _colores.length],
+                nuevo: delGenero.any(_esNueva),
+                onTap: () => onElegirGenero(genero.id),
+              );
+            },
+          ),
+      ],
+    );
+  }
+}
+
+class _TarjetaGenero extends StatelessWidget {
+  const _TarjetaGenero({
+    required this.nombre,
+    required this.cantidad,
+    required this.color,
+    required this.nuevo,
+    required this.onTap,
+  });
+
+  final String nombre;
+  final int cantidad;
+  final Color color;
+  final bool nuevo;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Stack(
+          children: [
+            Positioned(
+              right: -14,
+              bottom: -18,
+              child: Icon(
+                Icons.music_note_rounded,
+                size: 84,
+                color: Colors.white.withValues(alpha: 0.18),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    nombre,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 17,
+                    ),
+                  ),
+                  Text(
+                    cantidad == 1 ? '1 alabanza' : '$cantidad alabanzas',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (nuevo)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'NUEVO',
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 10,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
