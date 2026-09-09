@@ -6,12 +6,15 @@ import 'package:google_fonts/google_fonts.dart';
 /// que se usa como línea/resplandor — nunca como relleno grande de fondo.
 /// Oscuro sigue siendo la base del diseño, pero ahora hay tema claro
 /// también y el usuario elige Sistema/Claro/Oscuro desde Perfil →
-/// Apariencia — ver `PreferenciasService` y `AparienciaScreen`. Los dos
-/// comparten el mismo acento (`#6C63FF`, el mismo violeta del ícono de la
-/// app) para que se sigan viendo como la misma app en cualquiera de los
-/// dos modos; lo que cambia es la profundidad de las superficies: oscuro
-/// usa un negro con tinte violeta bien marcado entre fondo/tarjeta/campo,
-/// claro un blanco lavanda suave con la misma jerarquía.
+/// Apariencia — ver `PreferenciasService` y `AparienciaScreen`.
+///
+/// Las superficies (fondo, tarjeta, campo) son gris neutro de verdad, no
+/// derivadas de `ColorScheme.fromSeed` — ese constructor tiñe TODO de la
+/// tonalidad del seed, campos y tarjetas incluidos, y el resultado
+/// termina leyéndose como "toda la app es violeta" en vez de "la app es
+/// gris con un acento violeta". Acá el violeta (`#6C63FF`, el mismo del
+/// ícono) queda reservado a lo que de verdad es acento: botones,
+/// selección activa, foco — nunca el fondo general.
 ///
 /// Las vistas de Músico y Cantante (Paso 5) parten de acá pero además
 /// suben el tamaño de letra puntual del bloque de la canción activa — dos
@@ -32,16 +35,35 @@ class AppTheme {
 
   static ThemeData _base(Brightness brightness) {
     final esOscuro = brightness == Brightness.dark;
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: acento,
-      brightness: brightness,
-      error: error,
-    ).copyWith(
-      surface: esOscuro ? const Color(0xFF0F1120) : const Color(0xFFFAFAFE),
-      surfaceContainer: esOscuro ? const Color(0xFF191C2E) : const Color(0xFFF0F0F8),
-      surfaceContainerHighest:
-          esOscuro ? const Color(0xFF262A42) : const Color(0xFFE7E7F3),
-    );
+    final colorScheme = esOscuro
+        ? const ColorScheme.dark(
+            primary: acento,
+            onPrimary: Colors.white,
+            secondary: Color(0xFF8B8B94),
+            onSecondary: Colors.white,
+            error: error,
+            onError: Colors.white,
+            surface: Color(0xFF121214),
+            onSurface: Color(0xFFE4E4E7),
+            onSurfaceVariant: Color(0xFFA1A1AA),
+            surfaceContainer: Color(0xFF1C1C1F),
+            surfaceContainerHighest: Color(0xFF29292E),
+            outline: Color(0xFF525258),
+          )
+        : const ColorScheme.light(
+            primary: acento,
+            onPrimary: Colors.white,
+            secondary: Color(0xFF6B6B73),
+            onSecondary: Colors.white,
+            error: error,
+            onError: Colors.white,
+            surface: Color(0xFFFAFAFA),
+            onSurface: Color(0xFF1C1C1F),
+            onSurfaceVariant: Color(0xFF5C5C63),
+            surfaceContainer: Color(0xFFF1F1F2),
+            surfaceContainerHighest: Color(0xFFE4E4E7),
+            outline: Color(0xFFC7C7CD),
+          );
 
     final textTheme = GoogleFonts.interTextTheme(
       esOscuro ? ThemeData.dark().textTheme : ThemeData.light().textTheme,
