@@ -60,11 +60,14 @@ class _ContenidoState extends State<_Contenido> {
 
   Future<void> _cambiarFoto() async {
     final miembro = widget.miembro;
-    if (miembro == null) return;
+    final uid = context.read<AutenticacionService>().usuarioActual?.uid;
+    if (miembro == null || uid == null) return;
     setState(() => _subiendoFoto = true);
     try {
-      final url =
-          await context.read<FotoPerfilService>().elegirYSubir(miembro.id);
+      // La ruta de Storage usa el UID de Firebase Auth (`uid`), no el id
+      // del documento `Miembro` — la regla de seguridad compara contra
+      // `request.auth.uid`, que es ese mismo UID, no el id de Firestore.
+      final url = await context.read<FotoPerfilService>().elegirYSubir(uid);
       if (url == null || !mounted) return;
       await context
           .read<Repositorio<Miembro>>()
