@@ -157,27 +157,10 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
   /// para una sola decisión puntual, no un formulario propio (a diferencia
   /// de Editar perfil, que si es un dato central de cuenta).
   Future<void> _agregarGenero(Repositorio<Ritmo> repositorio) async {
-    final controller = TextEditingController();
     final nombre = await showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Nuevo género'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Nombre'),
-        ),
-        actions: [
-          AccionesDialogo(
-            textoSecundario: 'Cancelar',
-            onSecundario: () => Navigator.of(context).pop(),
-            textoPrimario: 'Agregar',
-            onPrimario: () => Navigator.of(context).pop(controller.text.trim()),
-          ),
-        ],
-      ),
+      builder: (_) => const _DialogoNuevoGenero(),
     );
-    controller.dispose();
     if (nombre == null || nombre.isEmpty || !mounted) return;
     final id = await repositorio.crear(Ritmo(id: '', nombre: nombre));
     if (!mounted) return;
@@ -394,6 +377,50 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// El campo vive en su propio `StatefulWidget` (mismo motivo que
+/// `_DialogoAcorde` en `editor_simple_screen.dart`): un
+/// `TextEditingController` local a `_agregarGenero` que se descartaba a
+/// mano justo después del `await showDialog` se disponía antes de que
+/// terminara la animación de salida del diálogo, y tiraba "A
+/// TextEditingController was used after being disposed." Acá Flutter
+/// llama a `dispose()` recién cuando el elemento realmente se desmonta.
+class _DialogoNuevoGenero extends StatefulWidget {
+  const _DialogoNuevoGenero();
+
+  @override
+  State<_DialogoNuevoGenero> createState() => _DialogoNuevoGeneroState();
+}
+
+class _DialogoNuevoGeneroState extends State<_DialogoNuevoGenero> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Nuevo género'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: const InputDecoration(labelText: 'Nombre'),
+      ),
+      actions: [
+        AccionesDialogo(
+          textoSecundario: 'Cancelar',
+          onSecundario: () => Navigator.of(context).pop(),
+          textoPrimario: 'Agregar',
+          onPrimario: () => Navigator.of(context).pop(_controller.text.trim()),
+        ),
+      ],
     );
   }
 }
