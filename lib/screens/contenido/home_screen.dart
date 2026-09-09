@@ -14,6 +14,12 @@ import 'package:app_alabanzas/screens/contenido/agregar_alabanza_screen.dart';
 import 'package:app_alabanzas/screens/contenido/repertorio_screen.dart';
 import 'package:app_alabanzas/screens/ejercicios/ejercicios_screen.dart';
 import 'package:app_alabanzas/screens/notas/mis_notas_screen.dart';
+import 'package:app_alabanzas/services/conectividad_service.dart';
+
+/// Verde reservado para "todo en orden" (sincronizado, en línea) — el
+/// único lugar de la app donde el estado se comunica con un color que no
+/// es ni el acento ni un color de superficie.
+const _colorSincronizado = Color(0xFF4CAF50);
 
 /// Pantalla 6 del prototipo. Punto de entrada después de Acceso — resumen
 /// corto del repertorio y accesos directos a lo que se usa más seguido.
@@ -27,6 +33,13 @@ class HomeScreen extends StatelessWidget {
 
   /// Cambia a la pestaña "En vivo" del shell — ver `PrincipalShellScreen`.
   final VoidCallback onModoEnVivo;
+
+  static String _saludo() {
+    final hora = DateTime.now().hour;
+    if (hora < 12) return 'Buenos días';
+    if (hora < 19) return 'Buenas tardes';
+    return 'Buenas noches';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +66,7 @@ class HomeScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Buenos días', style: tema.textTheme.bodyLarge),
+                        Text(_saludo(), style: tema.textTheme.bodyLarge),
                         Text(
                           nombre,
                           style: tema.textTheme.headlineMedium
@@ -80,31 +93,23 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 20),
           const _TarjetaProximoServicio(),
           const SizedBox(height: 4),
-          StreamBuilder<List<Cancion>>(
-            stream: context.read<Repositorio<Cancion>>().watchAll(),
-            builder: (context, snapshot) {
-              final canciones = snapshot.data ?? const <Cancion>[];
-              return Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                      color: tema.colorScheme.primary,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  Text(
-                    snapshot.connectionState == ConnectionState.waiting
-                        ? 'Sincronizando repertorio...'
-                        : '${canciones.length} alabanzas en el repertorio',
-                    style: tema.textTheme.bodyMedium
-                        ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
-                  ),
-                ],
-              );
-            },
+          Row(
+            children: [
+              StreamBuilder<List<Cancion>>(
+                stream: context.read<Repositorio<Cancion>>().watchAll(),
+                builder: (context, snapshot) {
+                  final sincronizado = snapshot.connectionState != ConnectionState.waiting;
+                  return _IndicadorEstado(
+                    color: sincronizado ? _colorSincronizado : tema.colorScheme.onSurfaceVariant,
+                    texto: sincronizado
+                        ? 'Repertorio sincronizado'
+                        : 'Sincronizando repertorio...',
+                  );
+                },
+              ),
+              const SizedBox(width: 16),
+              const _IndicadorConectividad(),
+            ],
           ),
           const SizedBox(height: 28),
           GridView.count(
@@ -362,6 +367,53 @@ class _TarjetaCancionReciente extends StatelessWidget {
           MaterialPageRoute(builder: (_) => const RepertorioScreen()),
         ),
       ),
+    );
+  }
+}
+
+/// Puntito de color + texto — mismo lenguaje visual para "sincronizado"
+/// y "en línea" en vez de inventar un estilo por indicador.
+class _IndicadorEstado extends StatelessWidget {
+  const _IndicadorEstado({required this.color, required this.texto});
+
+  final Color color;
+  final String texto;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          margin: const EdgeInsets.only(right: 6),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        Text(texto, style: tema.textTheme.bodySmall?.copyWith(color: color)),
+      ],
+    );
+  }
+}
+
+/// "En línea" / "Sin conexión" — ver doc de `ConectividadService` para
+/// qué significa exactamente cada estado acá.
+class _IndicadorConectividad extends StatelessWidget {
+  const _IndicadorConectividad();
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    return StreamBuilder<bool>(
+      stream: context.read<ConectividadService>().watchEnLinea(),
+      builder: (context, snapshot) {
+        final enLinea = snapshot.data ?? true;
+        return _IndicadorEstado(
+          color: enLinea ? _colorSincronizado : tema.colorScheme.error,
+          texto: enLinea ? 'En línea' : 'Sin conexión',
+        );
+      },
     );
   }
 }

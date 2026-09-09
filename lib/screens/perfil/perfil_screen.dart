@@ -143,25 +143,26 @@ class _ContenidoState extends State<_Contenido> {
                       ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
                 ),
                 if (miembro != null) ...[
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
+                  const SizedBox(height: 14),
+                  Row(
                     children: [
-                      if (miembro.roles.isEmpty)
-                        Text(
-                          'Sin rol asignado',
-                          style: tema.textTheme.bodySmall?.copyWith(
-                            color: tema.colorScheme.onSurfaceVariant,
-                          ),
-                        )
-                      else
-                        for (final rol in miembro.roles)
-                          Chip(
-                            label: Text(rol.nombreVisible),
-                            visualDensity: VisualDensity.compact,
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
+                      Expanded(
+                        child: _CampoInfo(
+                          etiqueta: 'Rol',
+                          valor: miembro.roles.isEmpty
+                              ? 'Sin asignar'
+                              : miembro.roles.map((r) => r.nombreVisible).join(', '),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _CampoInfo(
+                          etiqueta: 'Instrumento',
+                          valor: (miembro.instrumento?.isNotEmpty ?? false)
+                              ? miembro.instrumento!
+                              : 'Sin definir',
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -336,6 +337,43 @@ class _ContenidoState extends State<_Contenido> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Caja "Rol" / "Instrumento" debajo del nombre — a un vistazo, sin
+/// tener que abrir Editar mi perfil para ver qué instrumento toca cada
+/// quién (útil en Mi equipo tanto como acá).
+class _CampoInfo extends StatelessWidget {
+  const _CampoInfo({required this.etiqueta, required this.valor});
+
+  final String etiqueta;
+  final String valor;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: tema.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(AppTheme.radio),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            etiqueta,
+            style: tema.textTheme.bodySmall
+                ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            valor,
+            style: tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
     );
   }
 }

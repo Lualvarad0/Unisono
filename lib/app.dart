@@ -6,6 +6,7 @@ import 'package:app_alabanzas/core/firestore/repositorio.dart';
 import 'package:app_alabanzas/core/theme/app_theme.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
 import 'package:app_alabanzas/services/firestore_service.dart';
+import 'package:app_alabanzas/services/conectividad_service.dart';
 import 'package:app_alabanzas/services/foto_perfil_service.dart';
 import 'package:app_alabanzas/services/invite_link_service.dart';
 import 'package:app_alabanzas/services/preferencias_service.dart';
@@ -106,6 +107,7 @@ class _AppConProviders extends StatelessWidget {
         ),
         ChangeNotifierProvider<PreferenciasService>.value(value: preferencias),
         Provider<FotoPerfilService>(create: (_) => FotoPerfilService()),
+        Provider<ConectividadService>(create: (_) => ConectividadService()),
         Provider<Repositorio<Ritmo>>(create: (_) => RitmoRepository()),
         Provider<Repositorio<Artista>>(create: (_) => ArtistaRepository()),
         // CancionRepository y MiembroRepository suman métodos que no son
