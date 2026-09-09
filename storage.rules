@@ -1,12 +1,14 @@
 rules_version = '2';
 
 // Foto de perfil — ver FotoPerfilService. Un archivo por persona
-// (perfiles/<uid>.jpg): cualquiera logueado la puede ver (aparece en Mi
-// equipo, En vivo, etc.), pero solo el dueño de esa cuenta puede
-// subir/reemplazar la suya.
+// (perfiles/<uid>/foto.jpg): cualquiera logueado la puede ver (aparece en
+// Mi equipo, En vivo, etc.), pero solo el dueño de esa cuenta puede
+// subir/reemplazar la suya. El `uid` es un segmento propio (no
+// "<uid>.jpg" pegado): un wildcard no puede compartir segmento con un
+// sufijo literal en las reglas de Storage.
 service firebase.storage {
   match /b/{bucket}/o {
-    match /perfiles/{uid}.jpg {
+    match /perfiles/{uid}/{archivo} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == uid;
     }

@@ -7,9 +7,12 @@ import 'package:image_picker/image_picker.dart';
 /// para archivos binarios, así que el documento del `Miembro` solo guarda
 /// la URL de descarga (`fotoUrl`), no la imagen en sí.
 ///
-/// Un archivo por persona a propósito (`perfiles/<uid>.jpg`, siempre el
-/// mismo nombre): cada foto nueva pisa la anterior en vez de acumular
-/// archivos huérfanos en Storage que nadie referencia ni borra.
+/// Un archivo por persona a propósito (`perfiles/<uid>/foto.jpg`, siempre
+/// el mismo nombre): cada foto nueva pisa la anterior en vez de acumular
+/// archivos huérfanos en Storage que nadie referencia ni borra. El `uid`
+/// va en su propio segmento de carpeta (no `<uid>.jpg` pegado) porque las
+/// reglas de seguridad de Storage no permiten mezclar un wildcard con un
+/// sufijo literal dentro del mismo segmento — ver `storage.rules`.
 class FotoPerfilService {
   FotoPerfilService({ImagePicker? picker, FirebaseStorage? storage})
       : _picker = picker ?? ImagePicker(),
@@ -30,7 +33,7 @@ class FotoPerfilService {
     );
     if (elegida == null) return null;
 
-    final referencia = _storage.ref('perfiles/$uid.jpg');
+    final referencia = _storage.ref('perfiles/$uid/foto.jpg');
     await referencia.putFile(File(elegida.path));
     return referencia.getDownloadURL();
   }
