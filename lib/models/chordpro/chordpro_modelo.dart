@@ -4,13 +4,17 @@ import 'package:app_alabanzas/services/chordpro/acorde.dart';
 
 /// Tipo de sección de una canción, tomado de las directivas estándar de
 /// ChordPro (`start_of_verse`/`sov`, `start_of_chorus`/`soc`,
-/// `start_of_bridge`/`sob`, `start_of_tag`/`sot`).
+/// `start_of_bridge`/`sob`, `start_of_tag`/`sot`). `preCoro` es la
+/// excepción: el spec de ChordPro no tiene una directiva para
+/// pre-coro, así que usamos una propia (`start_of_prechorus`/`sopc`) —
+/// una app que solo entienda el spec oficial no la va a reconocer, pero
+/// tampoco rompe: esas líneas quedan sueltas, sin sección.
 ///
 /// "Intro" no es un tipo aparte del spec de ChordPro: se escribe como
 /// `{start_of_verse: Intro}` — el *tipo* sigue siendo `verso`, pero la
 /// `etiqueta` (el texto después de los dos puntos) es la que se muestra en
 /// pantalla. Mismo criterio para "Puente instrumental", "Coro final", etc.
-enum TipoSeccion { verso, coro, puente, tag, otra }
+enum TipoSeccion { verso, preCoro, coro, puente, tag, otra }
 
 /// Un fragmento de línea: el acorde (si hay) que va *antes* de este trozo
 /// de letra. `acorde == null` para el primer fragmento de una línea que
@@ -115,6 +119,7 @@ class CancionChordPro extends Equatable {
 
   static String? _directivaInicio(TipoSeccion tipo) => switch (tipo) {
         TipoSeccion.verso => 'start_of_verse',
+        TipoSeccion.preCoro => 'start_of_prechorus',
         TipoSeccion.coro => 'start_of_chorus',
         TipoSeccion.puente => 'start_of_bridge',
         TipoSeccion.tag => 'start_of_tag',
@@ -123,6 +128,7 @@ class CancionChordPro extends Equatable {
 
   static String? _directivaFin(TipoSeccion tipo) => switch (tipo) {
         TipoSeccion.verso => 'end_of_verse',
+        TipoSeccion.preCoro => 'end_of_prechorus',
         TipoSeccion.coro => 'end_of_chorus',
         TipoSeccion.puente => 'end_of_bridge',
         TipoSeccion.tag => 'end_of_tag',

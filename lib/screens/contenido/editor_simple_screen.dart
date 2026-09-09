@@ -6,11 +6,12 @@ import 'package:app_alabanzas/services/chordpro/editor_simple.dart';
 import 'package:app_alabanzas/widgets/acciones_dialogo.dart';
 import 'package:app_alabanzas/widgets/linea_chordpro_widget.dart';
 
-/// Nombre para mostrar en el selector de tipo y etiqueta por defecto
-/// cuando el usuario no escribe una propia (ej. "Verso" a secas, sin el
-/// "1" — eso lo agrega quien carga la canción si tiene varios versos).
+/// Nombre para mostrar en el selector de tipo. La etiqueta final de cada
+/// sección (la que se guarda) no se escribe a mano — ver
+/// `_EditorSimpleScreenState._etiquetas`.
 const _nombreTipo = {
   TipoSeccion.verso: 'Verso',
+  TipoSeccion.preCoro: 'Pre-Coro',
   TipoSeccion.coro: 'Coro',
   TipoSeccion.puente: 'Puente',
   TipoSeccion.tag: 'Tag',
@@ -57,7 +58,7 @@ class _EditorSimpleScreenState extends State<EditorSimpleScreen> {
       }
     }
     if (_secciones.isEmpty) {
-      _secciones.add(_SeccionEditable(tipo: TipoSeccion.verso, etiqueta: 'Verso 1'));
+      _secciones.add(_SeccionEditable(tipo: TipoSeccion.verso));
     }
   }
 
@@ -71,7 +72,7 @@ class _EditorSimpleScreenState extends State<EditorSimpleScreen> {
 
   void _agregarSeccion(TipoSeccion tipo) {
     setState(() {
-      _secciones.add(_SeccionEditable(tipo: tipo, etiqueta: _nombreTipo[tipo]!));
+      _secciones.add(_SeccionEditable(tipo: tipo));
     });
   }
 
@@ -101,7 +102,26 @@ class _EditorSimpleScreenState extends State<EditorSimpleScreen> {
     if (tipo != null) _agregarSeccion(tipo);
   }
 
+  /// La etiqueta de cada sección no se escribe a mano: se arma sola a
+  /// partir del tipo elegido y de cuántas secciones de ese mismo tipo ya
+  /// vienen antes en la lista — la primera queda "Verso" a secas, la
+  /// segunda "Verso 2", etc. Así alcanza con elegir el tipo (y, para una
+  /// sección que se repite en la canción como un segundo coro, agregarla
+  /// de nuevo con "Agregar sección" — el número se acomoda solo.
+  Map<_SeccionEditable, String> _etiquetas() {
+    final conteoPorTipo = <TipoSeccion, int>{};
+    final resultado = <_SeccionEditable, String>{};
+    for (final s in _secciones) {
+      final ocurrencia = (conteoPorTipo[s.tipo] ?? 0) + 1;
+      conteoPorTipo[s.tipo] = ocurrencia;
+      resultado[s] =
+          ocurrencia == 1 ? _nombreTipo[s.tipo]! : '${_nombreTipo[s.tipo]} $ocurrencia';
+    }
+    return resultado;
+  }
+
   CancionChordPro _construir() {
+    final etiquetas = _etiquetas();
     final secciones = <SeccionChordPro>[];
     for (final s in _secciones) {
       final lineas = s.lineas
@@ -113,13 +133,8 @@ class _EditorSimpleScreenState extends State<EditorSimpleScreen> {
               ))
           .toList();
       if (lineas.isEmpty) continue;
-      final etiqueta = s.etiquetaController.text.trim();
       secciones.add(
-        SeccionChordPro(
-          tipo: s.tipo,
-          etiqueta: etiqueta.isEmpty ? _nombreTipo[s.tipo]! : etiqueta,
-          lineas: lineas,
-        ),
+        SeccionChordPro(tipo: s.tipo, etiqueta: etiquetas[s]!, lineas: lineas),
       );
     }
     return CancionChordPro(secciones: secciones);
@@ -133,6 +148,7 @@ class _EditorSimpleScreenState extends State<EditorSimpleScreen> {
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
     final vistaPrevia = _construir();
+    final etiquetas = _etiquetas();
 
     return Scaffold(
       appBar: AppBar(
@@ -155,6 +171,7 @@ class _EditorSimpleScreenState extends State<EditorSimpleScreen> {
             _SeccionEditor(
               key: ObjectKey(seccion),
               seccion: seccion,
+              etiqueta: etiquetas[seccion]!,
               onCambiar: () => setState(() {}),
               onQuitar: _secciones.length > 1 ? () => _quitarSeccion(seccion) : null,
             ),
@@ -210,11 +227,17 @@ class _SeccionEditor extends StatelessWidget {
   const _SeccionEditor({
     super.key,
     required this.seccion,
+    required this.etiqueta,
     required this.onCambiar,
     required this.onQuitar,
   });
 
   final _SeccionEditable seccion;
+
+  /// Se calcula sola a partir del tipo — ver
+  /// `_EditorSimpleScreenState._etiquetas`. Es de solo lectura acá, no
+  /// hay campo para escribirla a mano.
+  final String etiqueta;
   final VoidCallback onCambiar;
   final VoidCallback? onQuitar;
 
@@ -232,7 +255,10 @@ class _SeccionEditor extends StatelessWidget {
                 Expanded(
                   child: DropdownButtonFormField<TipoSeccion>(
                     initialValue: seccion.tipo,
-                    decoration: const InputDecoration(labelText: 'Tipo'),
+                    decoration: InputDecoration(
+                      labelText: 'Tipo',
+                      helperText: 'Se va a llamar "$etiqueta"',
+                    ),
                     items: [
                       for (final tipo
                           in TipoSeccion.values.where((t) => t != TipoSeccion.otra))
@@ -244,14 +270,6 @@ class _SeccionEditor extends StatelessWidget {
                         onCambiar();
                       }
                     },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: seccion.etiquetaController,
-                    decoration: const InputDecoration(labelText: 'Nombre'),
-                    onChanged: (_) => onCambiar(),
                   ),
                 ),
                 if (onQuitar != null)
@@ -497,11 +515,9 @@ class _LineaEditable {
 }
 
 class _SeccionEditable {
-  _SeccionEditable({required this.tipo, required String etiqueta})
-      : etiquetaController = TextEditingController(text: etiqueta),
-        lineas = [_LineaEditable()];
+  _SeccionEditable({required this.tipo}) : lineas = [_LineaEditable()];
 
-  _SeccionEditable._cargada(this.tipo, this.etiquetaController, this.lineas);
+  _SeccionEditable._cargada(this.tipo, this.lineas);
 
   factory _SeccionEditable.desde(SeccionChordPro seccion) {
     final tipo = seccion.tipo == TipoSeccion.otra ? TipoSeccion.verso : seccion.tipo;
@@ -517,19 +533,13 @@ class _SeccionEditable {
       return _LineaEditable(letra: texto.letra, acordesPorPosicion: posiciones);
     }).toList();
     if (lineas.isEmpty) lineas.add(_LineaEditable());
-    return _SeccionEditable._cargada(
-      tipo,
-      TextEditingController(text: seccion.etiqueta),
-      lineas,
-    );
+    return _SeccionEditable._cargada(tipo, lineas);
   }
 
   TipoSeccion tipo;
-  final TextEditingController etiquetaController;
   final List<_LineaEditable> lineas;
 
   void dispose() {
-    etiquetaController.dispose();
     for (final l in lineas) {
       l.dispose();
     }

@@ -210,6 +210,7 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
           ? null
           : _compasController.text.trim(),
       etiquetas: _etiquetas,
+      creadaEn: widget.cancionExistente?.creadaEn ?? DateTime.now(),
     );
     if (_editando) {
       await cancionRepositorio.actualizar(cancion.id, cancion);

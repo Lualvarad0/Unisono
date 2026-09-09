@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 
 import 'package:app_alabanzas/core/firestore/model_converter.dart';
@@ -31,6 +32,7 @@ class Cancion extends Equatable {
     this.bpm,
     this.compas,
     this.etiquetas = const [],
+    this.creadaEn,
   });
 
   final String id;
@@ -57,6 +59,13 @@ class Cancion extends Equatable {
 
   final List<String> etiquetas;
 
+  /// Cuándo se cargó por primera vez — `null` para lo que ya estaba en
+  /// Firestore antes de este campo (canciones viejas simplemente nunca
+  /// cuentan como "nueva", no hace falta backfill). Sirve para el
+  /// distintivo "NUEVO" del género en `RepertorioScreen`; no cambia al
+  /// editar la canción.
+  final DateTime? creadaEn;
+
   factory Cancion.fromMap(String id, Map<String, dynamic> map) {
     final etiquetasRaw = map['etiquetas'] as List<dynamic>? ?? const [];
     return Cancion(
@@ -69,6 +78,7 @@ class Cancion extends Equatable {
       bpm: (map['bpm'] as num?)?.toInt(),
       compas: map['compas'] as String?,
       etiquetas: etiquetasRaw.map((e) => e.toString()).toList(),
+      creadaEn: (map['creadaEn'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -81,6 +91,7 @@ class Cancion extends Equatable {
         'bpm': bpm,
         'compas': compas,
         'etiquetas': etiquetas,
+        'creadaEn': creadaEn == null ? null : Timestamp.fromDate(creadaEn!),
       };
 
   Cancion copyWith({
@@ -93,6 +104,7 @@ class Cancion extends Equatable {
     int? bpm,
     String? compas,
     List<String>? etiquetas,
+    DateTime? creadaEn,
   }) {
     return Cancion(
       id: id,
@@ -104,6 +116,7 @@ class Cancion extends Equatable {
       bpm: bpm ?? this.bpm,
       compas: compas ?? this.compas,
       etiquetas: etiquetas ?? this.etiquetas,
+      creadaEn: creadaEn ?? this.creadaEn,
     );
   }
 
@@ -123,5 +136,6 @@ class Cancion extends Equatable {
         bpm,
         compas,
         etiquetas,
+        creadaEn,
       ];
 }
