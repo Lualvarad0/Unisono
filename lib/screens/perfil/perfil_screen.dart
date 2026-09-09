@@ -113,6 +113,16 @@ class _ContenidoState extends State<_Contenido> {
                     if (miembro != null)
                       OutlinedButton(
                         onPressed: _subiendoFoto ? null : _cambiarFoto,
+                        // El tema global fija `minimumSize:
+                        // Size.fromHeight(56)` para los botones grandes
+                        // de formulario (ancho infinito a propósito, ver
+                        // AppTheme) — acá, adentro de un Row sin
+                        // Expanded, ese ancho infinito no tiene dónde
+                        // resolverse. Este botón es chico a propósito
+                        // (al lado del avatar, no ocupa la fila entera).
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, 40),
+                        ),
                         child: const Text('Cambiar foto'),
                       ),
                   ],
