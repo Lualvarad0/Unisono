@@ -11,6 +11,7 @@ import 'package:app_alabanzas/services/foto_perfil_service.dart';
 import 'package:app_alabanzas/services/invite_link_service.dart';
 import 'package:app_alabanzas/services/notificaciones_service.dart';
 import 'package:app_alabanzas/services/preferencias_service.dart';
+import 'package:app_alabanzas/services/sync_local/conexion_local_service.dart';
 import 'package:app_alabanzas/screens/acceso/splash_screen.dart';
 import 'package:app_alabanzas/models/actividad.dart';
 import 'package:app_alabanzas/models/miembro.dart';
@@ -109,6 +110,7 @@ class _AppConProviders extends StatelessWidget {
         ChangeNotifierProvider<PreferenciasService>.value(value: preferencias),
         Provider<FotoPerfilService>(create: (_) => FotoPerfilService()),
         Provider<ConectividadService>(create: (_) => ConectividadService()),
+        Provider<ConexionLocalService>(create: (_) => ConexionLocalService()),
         Provider<Repositorio<Ritmo>>(create: (_) => RitmoRepository()),
         Provider<Repositorio<Artista>>(create: (_) => ArtistaRepository()),
         // CancionRepository y MiembroRepository suman métodos que no son

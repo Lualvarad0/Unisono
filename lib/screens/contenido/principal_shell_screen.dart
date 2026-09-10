@@ -6,8 +6,12 @@ import 'package:app_alabanzas/screens/contenido/repertorio_screen.dart';
 import 'package:app_alabanzas/screens/actividades/setlists_screen.dart';
 import 'package:app_alabanzas/screens/en_vivo/en_vivo_screen.dart';
 import 'package:app_alabanzas/screens/perfil/perfil_screen.dart';
+import 'package:app_alabanzas/models/miembro.dart';
+import 'package:app_alabanzas/repositories/miembro_repository.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
 import 'package:app_alabanzas/services/notificaciones_service.dart';
+import 'package:app_alabanzas/services/sync_local/conexion_local_service.dart';
+import 'package:app_alabanzas/services/sync_local/permisos_sync_local.dart';
 
 /// Contenedor con la barra inferior de navegación (Inicio, Repertorio, En
 /// vivo, Setlists, Perfil) — lo primero que se ve después de Acceso.
@@ -36,7 +40,24 @@ class _PrincipalShellScreenState extends State<PrincipalShellScreen> {
     final uid = context.read<AutenticacionService>().usuarioActual?.uid;
     if (uid != null) {
       context.read<NotificacionesService>().inicializar(uid);
+      _iniciarSyncLocal(uid);
     }
+  }
+
+  /// Arranca la sincronización P2P de "Modo en vivo" (ver
+  /// `ConexionLocalService`) apenas se sabe quién inició sesión: hace
+  /// falta el `Miembro` para decidir si este celular anuncia (líder) o
+  /// busca (el resto). Sin los permisos de Bluetooth/ubicación no tiene
+  /// sentido ni intentarlo — Nearby Connections falla en silencio sin
+  /// ellos.
+  Future<void> _iniciarSyncLocal(String uid) async {
+    final miembro = await context.read<MiembroRepository>().buscarPorUid(uid);
+    final permisosOk = await pedirPermisosSyncLocal();
+    if (!permisosOk || !mounted) return;
+    await context.read<ConexionLocalService>().iniciar(
+          nombreDispositivo: miembro?.nombre ?? 'Integrante',
+          esLider: miembro?.roles.contains(RolMiembro.lider) ?? false,
+        );
   }
 
   @override

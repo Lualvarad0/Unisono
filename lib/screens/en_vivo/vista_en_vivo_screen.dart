@@ -12,6 +12,7 @@ import 'package:app_alabanzas/screens/actividades/actividad_utils.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
 import 'package:app_alabanzas/services/chordpro/chordpro_parser.dart';
 import 'package:app_alabanzas/services/preferencias_service.dart';
+import 'package:app_alabanzas/services/sync_local/conexion_local_service.dart';
 
 extension<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
@@ -83,10 +84,21 @@ class _VistaEnVivoScreenState extends State<VistaEnVivoScreen> {
   Future<void> _transmitirSeccion(Actividad actividad, int indice) async {
     if (!widget.esLider) return;
     final repositorio = context.read<Repositorio<Actividad>>();
+    final conexionLocal = context.read<ConexionLocalService>();
     await repositorio.actualizar(
       actividad.id,
       actividad.copyWith(cancionActivaId: widget.cancionId, seccionActivaIndice: indice),
     );
+    // Además de Firestore: por red local, para que quien esté cerca lo
+    // vea al toque aunque no haya internet en el lugar — ver
+    // `ConexionLocalService`.
+    await conexionLocal.transmitir(
+          EstadoEnVivoLocal(
+            actividadId: actividad.id,
+            cancionActivaId: widget.cancionId,
+            seccionActivaIndice: indice,
+          ),
+        );
   }
 
   @override
@@ -122,40 +134,61 @@ class _VistaEnVivoScreenState extends State<VistaEnVivoScreen> {
                     .watchAll()
                     .map((l) => l.where((a) => a.id == widget.actividadId).firstOrNull),
                 builder: (context, snapshotActividad) {
-                  final actividad = snapshotActividad.data;
-                  final entrada = actividad?.setlist
-                      .where((e) => e.cancionId == widget.cancionId)
-                      .firstOrNull;
-                  final cancionChordPro = ChordProParser.parse(cancion.contenidoChordPro)
-                      .transponer(entrada?.tonoAsignado ?? 0);
-                  final esCancionActiva =
-                      actividad != null && actividad.cancionActivaId == widget.cancionId;
-                  final siguiendoLider = !widget.esLider && esCancionActiva;
+                  final actividadFirestore = snapshotActividad.data;
+                  final conexionLocal = context.read<ConexionLocalService>();
+                  return StreamBuilder<EstadoEnVivoLocal>(
+                    initialData: conexionLocal.ultimoEstado(widget.actividadId),
+                    stream: conexionLocal.estados
+                        .where((e) => e.actividadId == widget.actividadId),
+                    builder: (context, snapshotEstadoLocal) {
+                      final estadoLocal = snapshotEstadoLocal.data;
+                      // El estado que llega por red local (sin internet)
+                      // pisa al de Firestore mientras esté disponible —
+                      // ver doc de `ConexionLocalService`.
+                      final actividad =
+                          (actividadFirestore == null || estadoLocal == null)
+                              ? actividadFirestore
+                              : actividadFirestore.copyWith(
+                                  cancionActivaId: estadoLocal.cancionActivaId,
+                                  limpiarCancionActiva:
+                                      estadoLocal.cancionActivaId == null,
+                                  seccionActivaIndice: estadoLocal.seccionActivaIndice,
+                                );
+                      final entrada = actividad?.setlist
+                          .where((e) => e.cancionId == widget.cancionId)
+                          .firstOrNull;
+                      final cancionChordPro = ChordProParser.parse(cancion.contenidoChordPro)
+                          .transponer(entrada?.tonoAsignado ?? 0);
+                      final esCancionActiva =
+                          actividad != null && actividad.cancionActivaId == widget.cancionId;
+                      final siguiendoLider = !widget.esLider && esCancionActiva;
 
-                  if (siguiendoLider) {
-                    final indiceRemoto = actividad.seccionActivaIndice;
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (!_paginaController.hasClients) return;
-                      final actual = _paginaController.page?.round();
-                      if (actual != indiceRemoto) _irASeccion(indiceRemoto);
-                    });
-                  }
+                      if (siguiendoLider) {
+                        final indiceRemoto = actividad.seccionActivaIndice;
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!_paginaController.hasClients) return;
+                          final actual = _paginaController.page?.round();
+                          if (actual != indiceRemoto) _irASeccion(indiceRemoto);
+                        });
+                      }
 
-                  return _Lector(
-                    tituloCancion: cancion.titulo,
-                    tonoResultante: entrada == null
-                        ? cancion.tonoOriginal
-                        : transponerTono(cancion.tonoOriginal, entrada.tonoAsignado),
-                    secciones: cancionChordPro.secciones,
-                    mostrarAcordes: mostrarAcordes,
-                    tamanoLetra: preferencias.tamanoLetra,
-                    paginaController: _paginaController,
-                    siguiendoLider: siguiendoLider,
-                    esLider: widget.esLider,
-                    transmitiendoEstaCancion: widget.esLider && esCancionActiva,
-                    onCambiarPagina: actividad == null
-                        ? null
-                        : (indice) => _transmitirSeccion(actividad, indice),
+                      return _Lector(
+                        tituloCancion: cancion.titulo,
+                        tonoResultante: entrada == null
+                            ? cancion.tonoOriginal
+                            : transponerTono(cancion.tonoOriginal, entrada.tonoAsignado),
+                        secciones: cancionChordPro.secciones,
+                        mostrarAcordes: mostrarAcordes,
+                        tamanoLetra: preferencias.tamanoLetra,
+                        paginaController: _paginaController,
+                        siguiendoLider: siguiendoLider,
+                        esLider: widget.esLider,
+                        transmitiendoEstaCancion: widget.esLider && esCancionActiva,
+                        onCambiarPagina: actividad == null
+                            ? null
+                            : (indice) => _transmitirSeccion(actividad, indice),
+                      );
+                    },
                   );
                 },
               );
