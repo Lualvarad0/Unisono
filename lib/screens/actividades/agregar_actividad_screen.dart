@@ -10,6 +10,7 @@ import 'package:app_alabanzas/repositories/actividad_repository.dart';
 import 'package:app_alabanzas/screens/actividades/actividad_utils.dart';
 import 'package:app_alabanzas/widgets/acciones_dialogo.dart';
 import 'package:app_alabanzas/widgets/encabezado_seccion.dart';
+import 'package:app_alabanzas/widgets/selector_tonalidad.dart';
 
 /// Crear o editar una Actividad: nombre, fecha/hora, y el setlist —
 /// canciones en orden, cada una con cantante y tono asignados para ese
@@ -348,30 +349,25 @@ class _DialogoEntradaSetlistState extends State<_DialogoEntradaSetlist> {
               onChanged: (valor) => setState(() => _cantanteId = valor ?? ''),
             ),
             const SizedBox(height: 16),
-            Text('Tono para este día', style: tema.textTheme.labelLarge),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.remove_circle_outline),
-                  onPressed: () => setState(() => _tonoAsignado--),
-                ),
-                Column(
-                  children: [
-                    Text(tonoResultante, style: tema.textTheme.headlineSmall),
-                    if (_tonoAsignado != 0)
-                      Text(
-                        'Original ${_cancion.tonoOriginal}',
-                        style: tema.textTheme.bodySmall,
-                      ),
-                  ],
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  onPressed: () => setState(() => _tonoAsignado++),
+                Text('Tono para este día', style: tema.textTheme.labelLarge),
+                SelectorTonalidad(
+                  tono: tonoResultante,
+                  onBajar: () => setState(() => _tonoAsignado--),
+                  onSubir: () => setState(() => _tonoAsignado++),
                 ),
               ],
             ),
+            if (_tonoAsignado != 0) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Original ${_cancion.tonoOriginal}',
+                style: tema.textTheme.bodySmall
+                    ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+              ),
+            ],
           ],
         ),
       ),

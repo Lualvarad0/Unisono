@@ -11,15 +11,11 @@ import 'package:app_alabanzas/models/cancion.dart';
 import 'package:app_alabanzas/screens/actividades/actividad_utils.dart';
 import 'package:app_alabanzas/screens/actividades/detalle_actividad_screen.dart';
 import 'package:app_alabanzas/screens/contenido/agregar_alabanza_screen.dart';
+import 'package:app_alabanzas/screens/contenido/detalle_alabanza_screen.dart';
 import 'package:app_alabanzas/screens/contenido/repertorio_screen.dart';
 import 'package:app_alabanzas/screens/ejercicios/ejercicios_screen.dart';
 import 'package:app_alabanzas/screens/notas/mis_notas_screen.dart';
 import 'package:app_alabanzas/services/conectividad_service.dart';
-
-/// Verde reservado para "todo en orden" (sincronizado, en línea) — el
-/// único lugar de la app donde el estado se comunica con un color que no
-/// es ni el acento ni un color de superficie.
-const _colorSincronizado = Color(0xFF4CAF50);
 
 /// Pantalla 6 del prototipo. Punto de entrada después de Acceso — resumen
 /// corto del repertorio y accesos directos a lo que se usa más seguido.
@@ -103,7 +99,7 @@ class HomeScreen extends StatelessWidget {
                 builder: (context, snapshot) {
                   final sincronizado = snapshot.connectionState != ConnectionState.waiting;
                   return _IndicadorEstado(
-                    color: sincronizado ? _colorSincronizado : tema.colorScheme.onSurfaceVariant,
+                    color: sincronizado ? AppTheme.exito : tema.colorScheme.onSurfaceVariant,
                     texto: sincronizado
                         ? 'Repertorio sincronizado'
                         : 'Sincronizando repertorio...',
@@ -367,7 +363,9 @@ class _TarjetaCancionReciente extends StatelessWidget {
         subtitle: Text('Tono: ${cancion.tonoOriginal}'),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const RepertorioScreen()),
+          MaterialPageRoute(
+            builder: (_) => DetalleAlabanzaScreen(cancionId: cancion.id),
+          ),
         ),
       ),
     );
@@ -413,7 +411,7 @@ class _IndicadorConectividad extends StatelessWidget {
       builder: (context, snapshot) {
         final enLinea = snapshot.data ?? true;
         return _IndicadorEstado(
-          color: enLinea ? _colorSincronizado : tema.colorScheme.error,
+          color: enLinea ? AppTheme.exito : tema.colorScheme.error,
           texto: enLinea ? 'En línea' : 'Sin conexión',
         );
       },

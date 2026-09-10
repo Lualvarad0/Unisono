@@ -30,6 +30,12 @@ class AppTheme {
   /// es un fallo. Rojo queda reservado para errores de verdad (ej. login).
   static const error = Color(0xFFE0526B);
 
+  /// Verde reservado para "todo en orden" (sincronizado, en línea,
+  /// disponible offline) — el único lugar de la app donde el estado se
+  /// comunica con un color que no es ni el acento ni un color de
+  /// superficie.
+  static const exito = Color(0xFF4CAF50);
+
   static ThemeData get dark => _base(Brightness.dark);
   static ThemeData get light => _base(Brightness.light);
 
