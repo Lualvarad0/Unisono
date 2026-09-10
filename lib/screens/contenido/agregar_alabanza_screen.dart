@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:app_alabanzas/core/firestore/repositorio.dart';
+import 'package:app_alabanzas/core/genero_colores.dart';
 import 'package:app_alabanzas/models/artista.dart';
 import 'package:app_alabanzas/models/cancion.dart';
 import 'package:app_alabanzas/models/ritmo.dart';
 import 'package:app_alabanzas/screens/contenido/detectar_tonalidad_screen.dart';
 import 'package:app_alabanzas/screens/contenido/editor_chordpro_screen.dart';
 import 'package:app_alabanzas/screens/contenido/editor_simple_screen.dart';
-import 'package:app_alabanzas/widgets/acciones_dialogo.dart';
+import 'package:app_alabanzas/widgets/chip_genero.dart';
+import 'package:app_alabanzas/widgets/dialogo_nuevo_genero.dart';
 import 'package:app_alabanzas/widgets/encabezado_seccion.dart';
 
 /// Géneros con los que arranca la colección `ritmos` la primera vez que se
@@ -159,7 +161,7 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
   Future<void> _agregarGenero(Repositorio<Ritmo> repositorio) async {
     final nombre = await showDialog<String>(
       context: context,
-      builder: (_) => const _DialogoNuevoGenero(),
+      builder: (_) => const DialogoNuevoGenero(),
     );
     if (nombre == null || nombre.isEmpty || !mounted) return;
     final id = await repositorio.crear(Ritmo(id: '', nombre: nombre));
@@ -290,11 +292,12 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
                   runSpacing: 8,
                   children: [
                     for (final genero in generos)
-                      ChoiceChip(
-                        label: Text(genero.nombre),
-                        selected: _ritmoId == genero.id,
-                        onSelected: (marcado) => setState(
-                          () => _ritmoId = marcado ? genero.id : null,
+                      ChipGenero(
+                        nombre: genero.nombre,
+                        color: colorDeGenero(generos, genero.id),
+                        seleccionado: _ritmoId == genero.id,
+                        onTap: () => setState(
+                          () => _ritmoId = _ritmoId == genero.id ? null : genero.id,
                         ),
                       ),
                     ActionChip(
@@ -377,50 +380,6 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// El campo vive en su propio `StatefulWidget` (mismo motivo que
-/// `_DialogoAcorde` en `editor_simple_screen.dart`): un
-/// `TextEditingController` local a `_agregarGenero` que se descartaba a
-/// mano justo después del `await showDialog` se disponía antes de que
-/// terminara la animación de salida del diálogo, y tiraba "A
-/// TextEditingController was used after being disposed." Acá Flutter
-/// llama a `dispose()` recién cuando el elemento realmente se desmonta.
-class _DialogoNuevoGenero extends StatefulWidget {
-  const _DialogoNuevoGenero();
-
-  @override
-  State<_DialogoNuevoGenero> createState() => _DialogoNuevoGeneroState();
-}
-
-class _DialogoNuevoGeneroState extends State<_DialogoNuevoGenero> {
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Nuevo género'),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        decoration: const InputDecoration(labelText: 'Nombre'),
-      ),
-      actions: [
-        AccionesDialogo(
-          textoSecundario: 'Cancelar',
-          onSecundario: () => Navigator.of(context).pop(),
-          textoPrimario: 'Agregar',
-          onPrimario: () => Navigator.of(context).pop(_controller.text.trim()),
-        ),
-      ],
     );
   }
 }
