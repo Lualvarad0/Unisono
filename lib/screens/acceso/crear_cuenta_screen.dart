@@ -68,7 +68,10 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
               child: Card(
                 elevation: 0,
                 color: tema.colorScheme.surfaceContainerLow,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(28),
+                  side: BorderSide(color: tema.colorScheme.outlineVariant),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
                   child: Form(
@@ -100,7 +103,7 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                         const SizedBox(height: 14),
                         CampoAuth(
                           controller: _contrasenaController,
-                          hint: 'Contraseña (mínimo 6 caracteres)',
+                          hint: 'Contraseña',
                           esContrasena: true,
                           autofillHints: const [AutofillHints.newPassword],
                           textInputAction: TextInputAction.next,

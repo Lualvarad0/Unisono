@@ -67,7 +67,10 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Card(
                 elevation: 0,
                 color: tema.colorScheme.surfaceContainerLow,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(28),
+                  side: BorderSide(color: tema.colorScheme.outlineVariant),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
                   child: Form(
