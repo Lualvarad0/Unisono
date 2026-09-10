@@ -11,6 +11,7 @@ import 'package:app_alabanzas/models/chordpro/chordpro_modelo.dart';
 import 'package:app_alabanzas/screens/contenido/agregar_alabanza_screen.dart';
 import 'package:app_alabanzas/services/chordpro/chordpro_parser.dart';
 import 'package:app_alabanzas/widgets/linea_chordpro_widget.dart';
+import 'package:app_alabanzas/widgets/selector_tonalidad.dart';
 
 /// Notas cromáticas en orden, para el selector de tonalidad — un mapeo
 /// chico y local a esta pantalla, no una regla de negocio del parser.
@@ -34,11 +35,8 @@ class DetalleAlabanzaScreen extends StatefulWidget {
 class _DetalleAlabanzaScreenState extends State<DetalleAlabanzaScreen> {
   int _semitonos = 0;
 
-  void _cambiarTono(Cancion cancion, String nuevaNota) {
-    final origen = _escalaCromatica.indexOf(cancion.tonoOriginal);
-    final destino = _escalaCromatica.indexOf(nuevaNota);
-    if (origen == -1 || destino == -1) return;
-    setState(() => _semitonos = (destino - origen) % 12);
+  void _moverSemitono(int delta) {
+    setState(() => _semitonos = (_semitonos + delta) % 12);
   }
 
   @override
@@ -67,7 +65,8 @@ class _DetalleAlabanzaScreenState extends State<DetalleAlabanzaScreen> {
                 cancion: cancion,
                 genero: genero,
                 semitonos: _semitonos,
-                onCambiarTono: (nota) => _cambiarTono(cancion, nota),
+                onBajarTono: () => _moverSemitono(-1),
+                onSubirTono: () => _moverSemitono(1),
               );
             },
           );
@@ -86,13 +85,15 @@ class _Contenido extends StatelessWidget {
     required this.cancion,
     required this.genero,
     required this.semitonos,
-    required this.onCambiarTono,
+    required this.onBajarTono,
+    required this.onSubirTono,
   });
 
   final Cancion cancion;
   final String? genero;
   final int semitonos;
-  final ValueChanged<String> onCambiarTono;
+  final VoidCallback onBajarTono;
+  final VoidCallback onSubirTono;
 
   @override
   Widget build(BuildContext context) {
@@ -150,26 +151,18 @@ class _Contenido extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Text('Tonalidad',
-                    style: tema.textTheme.labelLarge
-                        ?.copyWith(color: tema.colorScheme.onSurfaceVariant)),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 40,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _escalaCromatica.length,
-                    separatorBuilder: (context, index) => const SizedBox(width: 8),
-                    itemBuilder: (context, i) {
-                      final nota = _escalaCromatica[i];
-                      final seleccionada = nota == tonoActual;
-                      return ChoiceChip(
-                        label: Text(nota),
-                        selected: seleccionada,
-                        onSelected: (_) => onCambiarTono(nota),
-                      );
-                    },
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Tonalidad',
+                        style: tema.textTheme.labelLarge
+                            ?.copyWith(color: tema.colorScheme.onSurfaceVariant)),
+                    SelectorTonalidad(
+                      tono: tonoActual,
+                      onBajar: onBajarTono,
+                      onSubir: onSubirTono,
+                    ),
+                  ],
                 ),
               ],
             ),

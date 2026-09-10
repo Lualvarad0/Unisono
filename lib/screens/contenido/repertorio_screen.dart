@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:app_alabanzas/core/firestore/repositorio.dart';
+import 'package:app_alabanzas/core/theme/app_theme.dart';
 import 'package:app_alabanzas/models/artista.dart';
 import 'package:app_alabanzas/models/cancion.dart';
 import 'package:app_alabanzas/models/ritmo.dart';
@@ -420,6 +421,7 @@ class _TarjetaCancion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tema = Theme.of(context);
     final subtitulo = [
       artista,
       'Tono: ${cancion.tonoOriginal}',
@@ -429,7 +431,30 @@ class _TarjetaCancion extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: ListTile(
         title: Text(cancion.titulo),
-        subtitle: Text(subtitulo),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(subtitulo),
+            const SizedBox(height: 2),
+            // El caché de Firestore es ilimitado (ver
+            // configurarFirestore) — si esta canción está en esta
+            // lista, ya la sincronizó al menos una vez y queda
+            // guardada en el celular para siempre, sin importar si
+            // hay internet ahora mismo.
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.check_circle, size: 13, color: AppTheme.exito),
+                const SizedBox(width: 4),
+                Text(
+                  'Disponible offline',
+                  style: tema.textTheme.bodySmall?.copyWith(color: AppTheme.exito),
+                ),
+              ],
+            ),
+          ],
+        ),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(
