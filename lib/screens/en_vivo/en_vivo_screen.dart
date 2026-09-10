@@ -10,6 +10,7 @@ import 'package:app_alabanzas/repositories/miembro_repository.dart';
 import 'package:app_alabanzas/screens/actividades/actividad_utils.dart';
 import 'package:app_alabanzas/screens/en_vivo/vista_en_vivo_screen.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
+import 'package:app_alabanzas/services/sync_local/conexion_local_service.dart';
 
 /// Pestaña "En vivo": el setlist de la actividad de hoy (o si no hay
 /// ninguna hoy, la próxima más cercana, o si no hay futuras, la última
@@ -83,11 +84,32 @@ class EnVivoScreen extends StatelessWidget {
                         for (final m in snapshotMiembros.data ?? const <Miembro>[])
                           m.id: m.nombre,
                       };
-                      return _Contenido(
-                        actividad: actividad,
-                        esLider: esLider,
-                        cancionPorId: cancionPorId,
-                        nombrePorMiembroId: nombrePorMiembroId,
+                      final conexionLocal = context.read<ConexionLocalService>();
+                      return StreamBuilder<EstadoEnVivoLocal>(
+                        initialData: conexionLocal.ultimoEstado(actividad.id),
+                        stream: conexionLocal.estados
+                            .where((e) => e.actividadId == actividad.id),
+                        builder: (context, snapshotEstadoLocal) {
+                          final estadoLocal = snapshotEstadoLocal.data;
+                          // El estado que llega por red local (sin
+                          // internet) pisa al de Firestore mientras esté
+                          // disponible — ver doc de `ConexionLocalService`.
+                          final actividadEfectiva = estadoLocal == null
+                              ? actividad
+                              : actividad.copyWith(
+                                  cancionActivaId: estadoLocal.cancionActivaId,
+                                  limpiarCancionActiva:
+                                      estadoLocal.cancionActivaId == null,
+                                  seccionActivaIndice: estadoLocal.seccionActivaIndice,
+                                );
+                          return _Contenido(
+                            actividad: actividadEfectiva,
+                            esLider: esLider,
+                            cancionPorId: cancionPorId,
+                            nombrePorMiembroId: nombrePorMiembroId,
+                            conexionLocal: conexionLocal,
+                          );
+                        },
                       );
                     },
                   );
@@ -107,12 +129,14 @@ class _Contenido extends StatelessWidget {
     required this.esLider,
     required this.cancionPorId,
     required this.nombrePorMiembroId,
+    required this.conexionLocal,
   });
 
   final Actividad actividad;
   final bool esLider;
   final Map<String, Cancion> cancionPorId;
   final Map<String, String> nombrePorMiembroId;
+  final ConexionLocalService conexionLocal;
 
   Future<void> _abrir(BuildContext context, String cancionId) async {
     if (esLider) {
@@ -120,6 +144,9 @@ class _Contenido extends StatelessWidget {
             actividad.id,
             actividad.copyWith(cancionActivaId: cancionId, seccionActivaIndice: 0),
           );
+      await conexionLocal.transmitir(
+        EstadoEnVivoLocal(actividadId: actividad.id, cancionActivaId: cancionId),
+      );
     }
     if (!context.mounted) return;
     Navigator.of(context).push(
@@ -133,11 +160,14 @@ class _Contenido extends StatelessWidget {
     );
   }
 
-  Future<void> _detener(BuildContext context) {
-    return context.read<Repositorio<Actividad>>().actualizar(
+  Future<void> _detener(BuildContext context) async {
+    await context.read<Repositorio<Actividad>>().actualizar(
           actividad.id,
           actividad.copyWith(limpiarCancionActiva: true, seccionActivaIndice: 0),
         );
+    await conexionLocal.transmitir(
+      EstadoEnVivoLocal(actividadId: actividad.id, cancionActivaId: null),
+    );
   }
 
   @override
