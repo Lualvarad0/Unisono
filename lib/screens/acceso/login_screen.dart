@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
 import 'package:app_alabanzas/screens/acceso/crear_cuenta_screen.dart';
 import 'package:app_alabanzas/screens/acceso/recuperar_contrasena_screen.dart';
+import 'package:app_alabanzas/widgets/campo_auth.dart';
+import 'package:app_alabanzas/widgets/logo_unisono.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -53,86 +55,114 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tema = Theme.of(context);
     return Scaffold(
       appBar: AppBar(),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Iniciar sesión',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                const SizedBox(height: 28),
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  autofillHints: const [AutofillHints.email],
-                  decoration: const InputDecoration(labelText: 'Correo'),
-                  validator: (valor) => (valor == null || !valor.contains('@'))
-                      ? 'Ingresá un correo válido'
-                      : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _contrasenaController,
-                  obscureText: true,
-                  autofillHints: const [AutofillHints.password],
-                  decoration: const InputDecoration(labelText: 'Contraseña'),
-                  validator: (valor) => (valor == null || valor.isEmpty)
-                      ? 'Ingresá tu contraseña'
-                      : null,
-                  onFieldSubmitted: (_) => _iniciarSesion(),
-                ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const RecuperarContrasenaScreen(),
-                      ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Card(
+                elevation: 0,
+                color: tema.colorScheme.surfaceContainerLow,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        const LogoUnisono(tamano: 56),
+                        const SizedBox(height: 12),
+                        Text('Unísono', style: tema.textTheme.titleLarge),
+                        const SizedBox(height: 28),
+                        CampoAuth(
+                          controller: _emailController,
+                          hint: 'Correo',
+                          keyboardType: TextInputType.emailAddress,
+                          autofillHints: const [AutofillHints.email],
+                          textInputAction: TextInputAction.next,
+                          validator: (valor) => (valor == null || !valor.contains('@'))
+                              ? 'Ingresa un correo válido'
+                              : null,
+                        ),
+                        const SizedBox(height: 14),
+                        CampoAuth(
+                          controller: _contrasenaController,
+                          hint: 'Contraseña',
+                          esContrasena: true,
+                          autofillHints: const [AutofillHints.password],
+                          textInputAction: TextInputAction.done,
+                          validator: (valor) => (valor == null || valor.isEmpty)
+                              ? 'Ingresa tu contraseña'
+                              : null,
+                          onFieldSubmitted: (_) => _iniciarSesion(),
+                        ),
+                        if (_error != null) ...[
+                          const SizedBox(height: 14),
+                          Text(
+                            _error!,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: tema.colorScheme.error),
+                          ),
+                        ],
+                        const SizedBox(height: 22),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            style: FilledButton.styleFrom(
+                              shape: const StadiumBorder(),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            onPressed: _enviando ? null : _iniciarSesion,
+                            child: _enviando
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.4,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text('Iniciar sesión'),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          runSpacing: 4,
+                          children: [
+                            TextButton(
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                              ),
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const RecuperarContrasenaScreen(),
+                                ),
+                              ),
+                              child: const Text('¿Olvidaste tu contraseña?'),
+                            ),
+                            TextButton(
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                              ),
+                              onPressed: () => Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(
+                                  builder: (_) => const CrearCuentaScreen(),
+                                ),
+                              ),
+                              child: const Text('Crear cuenta'),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    child: const Text('¿Olvidaste tu contraseña?'),
                   ),
                 ),
-                if (_error != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    _error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                FilledButton(
-                  onPressed: _enviando ? null : _iniciarSesion,
-                  child: _enviando
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2.4),
-                        )
-                      : const Text('Iniciar sesión'),
-                ),
-                const SizedBox(height: 20),
-                Center(
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (_) => const CrearCuentaScreen(),
-                      ),
-                    ),
-                    child: const Text('¿No tenés cuenta? Creá una'),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import 'package:app_alabanzas/services/autenticacion_service.dart';
 import 'package:app_alabanzas/screens/acceso/login_screen.dart';
+import 'package:app_alabanzas/widgets/campo_auth.dart';
+import 'package:app_alabanzas/widgets/logo_unisono.dart';
 
 class CrearCuentaScreen extends StatefulWidget {
   const CrearCuentaScreen({super.key});
@@ -54,94 +56,110 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tema = Theme.of(context);
     return Scaffold(
       appBar: AppBar(),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Crear cuenta',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Con esto entrás a la app — después elegís quién sos '
-                  'dentro del equipo.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                ),
-                const SizedBox(height: 28),
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  autofillHints: const [AutofillHints.email],
-                  decoration: const InputDecoration(labelText: 'Correo'),
-                  validator: (valor) => (valor == null || !valor.contains('@'))
-                      ? 'Ingresá un correo válido'
-                      : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _contrasenaController,
-                  obscureText: true,
-                  autofillHints: const [AutofillHints.newPassword],
-                  decoration: const InputDecoration(
-                    labelText: 'Contraseña',
-                    helperText: 'Al menos 6 caracteres',
-                  ),
-                  validator: (valor) => (valor == null || valor.length < 6)
-                      ? 'La contraseña necesita al menos 6 caracteres'
-                      : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _confirmarController,
-                  obscureText: true,
-                  decoration:
-                      const InputDecoration(labelText: 'Confirmar contraseña'),
-                  validator: (valor) => valor != _contrasenaController.text
-                      ? 'Las contraseñas no coinciden'
-                      : null,
-                  onFieldSubmitted: (_) => _crearCuenta(),
-                ),
-                if (_error != null) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    _error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Card(
+                elevation: 0,
+                color: tema.colorScheme.surfaceContainerLow,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        const LogoUnisono(tamano: 56),
+                        const SizedBox(height: 12),
+                        Text('Crear cuenta', style: tema.textTheme.titleLarge),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Con esto entras a la app — después eliges quién '
+                          'eres dentro del equipo.',
+                          textAlign: TextAlign.center,
+                          style: tema.textTheme.bodyMedium
+                              ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+                        ),
+                        const SizedBox(height: 28),
+                        CampoAuth(
+                          controller: _emailController,
+                          hint: 'Correo',
+                          keyboardType: TextInputType.emailAddress,
+                          autofillHints: const [AutofillHints.email],
+                          textInputAction: TextInputAction.next,
+                          validator: (valor) => (valor == null || !valor.contains('@'))
+                              ? 'Ingresa un correo válido'
+                              : null,
+                        ),
+                        const SizedBox(height: 14),
+                        CampoAuth(
+                          controller: _contrasenaController,
+                          hint: 'Contraseña (mínimo 6 caracteres)',
+                          esContrasena: true,
+                          autofillHints: const [AutofillHints.newPassword],
+                          textInputAction: TextInputAction.next,
+                          validator: (valor) => (valor == null || valor.length < 6)
+                              ? 'La contraseña necesita al menos 6 caracteres'
+                              : null,
+                        ),
+                        const SizedBox(height: 14),
+                        CampoAuth(
+                          controller: _confirmarController,
+                          hint: 'Confirmar contraseña',
+                          esContrasena: true,
+                          textInputAction: TextInputAction.done,
+                          validator: (valor) => valor != _contrasenaController.text
+                              ? 'Las contraseñas no coinciden'
+                              : null,
+                          onFieldSubmitted: (_) => _crearCuenta(),
+                        ),
+                        if (_error != null) ...[
+                          const SizedBox(height: 14),
+                          Text(
+                            _error!,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: tema.colorScheme.error),
+                          ),
+                        ],
+                        const SizedBox(height: 22),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            style: FilledButton.styleFrom(
+                              shape: const StadiumBorder(),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            onPressed: _enviando ? null : _crearCuenta,
+                            child: _enviando
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.4,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text('Crear cuenta'),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          ),
+                          child: const Text('¿Ya tienes cuenta? Inicia sesión'),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: _enviando ? null : _crearCuenta,
-                  child: _enviando
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2.4),
-                        )
-                      : const Text('Crear cuenta'),
                 ),
-                const SizedBox(height: 20),
-                Center(
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    ),
-                    child: const Text('¿Ya tenés cuenta? Iniciá sesión'),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
