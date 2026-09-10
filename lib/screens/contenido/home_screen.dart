@@ -36,6 +36,9 @@ class HomeScreen extends StatelessWidget {
 
   static String _saludo() {
     final hora = DateTime.now().hour;
+    // Madrugada (0-5) cae en "noches", no en "días" — a nadie le dicen
+    // "buenos días" a las 2 de la mañana.
+    if (hora < 6) return 'Buenas noches';
     if (hora < 12) return 'Buenos días';
     if (hora < 19) return 'Buenas tardes';
     return 'Buenas noches';
