@@ -2,12 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:app_alabanzas/core/firestore/repositorio.dart';
+import 'package:app_alabanzas/core/genero_colores.dart';
 import 'package:app_alabanzas/core/theme/app_theme.dart';
 import 'package:app_alabanzas/models/artista.dart';
 import 'package:app_alabanzas/models/cancion.dart';
 import 'package:app_alabanzas/models/ritmo.dart';
 import 'package:app_alabanzas/screens/contenido/agregar_alabanza_screen.dart';
 import 'package:app_alabanzas/screens/contenido/detalle_alabanza_screen.dart';
+import 'package:app_alabanzas/widgets/dialogo_nuevo_genero.dart';
+
+/// Color neutro para los cuadros que no son "un género de verdad" —
+/// "Sin género" y "+ Nuevo género" — para que no compitan por un lugar
+/// en la paleta de colores real.
+const _colorNeutro = Color(0xFF4A4A52);
 
 /// Pantalla 7 del prototipo: buscar y navegar el repertorio completo.
 ///
@@ -31,6 +38,10 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
   final _busquedaController = TextEditingController();
   String _busqueda = '';
   String? _generoFiltro;
+  // "Sin género" también filtra (a canciones con ritmoId nulo) pero no
+  // tiene un id de Ritmo real — no puede representarse con
+  // `_generoFiltro`, así que es un flag aparte.
+  bool _soloSinGenero = false;
   bool _explorando = true;
 
   @override
@@ -42,6 +53,15 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
   void _elegirGenero(String id) {
     setState(() {
       _generoFiltro = id;
+      _soloSinGenero = false;
+      _explorando = false;
+    });
+  }
+
+  void _elegirSinGenero() {
+    setState(() {
+      _generoFiltro = null;
+      _soloSinGenero = true;
       _explorando = false;
     });
   }
@@ -49,6 +69,7 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
   void _verTodas() {
     setState(() {
       _generoFiltro = null;
+      _soloSinGenero = false;
       _explorando = false;
     });
   }
@@ -56,6 +77,7 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
   void _volverAExplorar() {
     setState(() {
       _generoFiltro = null;
+      _soloSinGenero = false;
       _explorando = true;
     });
   }
@@ -95,23 +117,17 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
                   ),
                 ),
               ),
-              if (_busqueda.isEmpty && _generoFiltro != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 20, 8),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        tooltip: 'Volver a géneros',
-                        onPressed: _volverAExplorar,
-                      ),
-                      Text(
-                        generosPorId[_generoFiltro] ?? '',
-                        style: tema.textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
+              if (_busqueda.isEmpty && !_explorando)
+                _EncabezadoFiltro(
+                  color: _generoFiltro != null
+                      ? colorDeGenero(generos, _generoFiltro!)
+                      : null,
+                  titulo: _soloSinGenero
+                      ? 'Sin género'
+                      : (_generoFiltro != null
+                          ? (generosPorId[_generoFiltro] ?? '')
+                          : 'Todas las alabanzas'),
+                  onVolver: _volverAExplorar,
                 ),
               Expanded(
                 child: StreamBuilder<List<Cancion>>(
@@ -122,11 +138,12 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
                     }
                     final todas = snapshotCanciones.data!;
 
-                    if (_busqueda.isEmpty && _generoFiltro == null && _explorando) {
+                    if (_busqueda.isEmpty && _explorando) {
                       return _ExplorarGeneros(
                         generos: generos,
                         canciones: todas,
                         onElegirGenero: _elegirGenero,
+                        onElegirSinGenero: _elegirSinGenero,
                         onVerTodas: _verTodas,
                       );
                     }
@@ -138,7 +155,9 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
                           .where((c) => c.titulo.toLowerCase().contains(termino))
                           .toList();
                     }
-                    if (_generoFiltro != null) {
+                    if (_soloSinGenero) {
+                      canciones = canciones.where((c) => c.ritmoId == null).toList();
+                    } else if (_generoFiltro != null) {
                       canciones = canciones
                           .where((c) => c.ritmoId == _generoFiltro)
                           .toList();
@@ -230,36 +249,37 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
 
 /// Cuadrícula de géneros de dos columnas, un cuadro de color por género —
 /// la pantalla de entrada al repertorio en vez de una lista plana larga.
+/// Siempre hay dos cuadros extra al final: "Sin género" (si hay alguna
+/// canción sin clasificar — si no, ninguna forma de encontrarla sin
+/// pasar por "Ver todas") y "+ Nuevo género".
 class _ExplorarGeneros extends StatelessWidget {
   const _ExplorarGeneros({
     required this.generos,
     required this.canciones,
     required this.onElegirGenero,
+    required this.onElegirSinGenero,
     required this.onVerTodas,
   });
 
   final List<Ritmo> generos;
   final List<Cancion> canciones;
   final ValueChanged<String> onElegirGenero;
+  final VoidCallback onElegirSinGenero;
   final VoidCallback onVerTodas;
-
-  /// Paleta fija, un color por posición en la grilla — no depende del
-  /// nombre del género así que no hace falta mantenerla sincronizada con
-  /// qué géneros existen.
-  static const _colores = [
-    Color(0xFFE91429),
-    Color(0xFF1E3264),
-    Color(0xFF8D67AB),
-    Color(0xFF148A08),
-    Color(0xFFE8115B),
-    Color(0xFFBA5D07),
-    Color(0xFF477D95),
-    Color(0xFF509BF5),
-  ];
 
   static bool _esNueva(Cancion c) =>
       c.creadaEn != null &&
       DateTime.now().difference(c.creadaEn!) <= const Duration(days: 7);
+
+  Future<void> _agregarGenero(BuildContext context) async {
+    final repositorio = context.read<Repositorio<Ritmo>>();
+    final nombre = await showDialog<String>(
+      context: context,
+      builder: (_) => const DialogoNuevoGenero(),
+    );
+    if (nombre == null || nombre.isEmpty) return;
+    await repositorio.crear(Ritmo(id: '', nombre: nombre));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -268,6 +288,7 @@ class _ExplorarGeneros extends StatelessWidget {
       for (final genero in generos)
         if (canciones.any((c) => c.ritmoId == genero.id)) genero,
     ];
+    final sinGenero = canciones.where((c) => c.ritmoId == null).toList();
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
       children: [
@@ -282,7 +303,7 @@ class _ExplorarGeneros extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        if (conCanciones.isEmpty)
+        if (conCanciones.isEmpty && sinGenero.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: Text(
@@ -295,7 +316,7 @@ class _ExplorarGeneros extends StatelessWidget {
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: conCanciones.length,
+            itemCount: conCanciones.length + (sinGenero.isNotEmpty ? 1 : 0) + 1,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               mainAxisSpacing: 12,
@@ -303,16 +324,29 @@ class _ExplorarGeneros extends StatelessWidget {
               childAspectRatio: 1.7,
             ),
             itemBuilder: (context, i) {
-              final genero = conCanciones[i];
-              final delGenero =
-                  canciones.where((c) => c.ritmoId == genero.id).toList();
-              return _TarjetaGenero(
-                nombre: genero.nombre,
-                cantidad: delGenero.length,
-                color: _colores[i % _colores.length],
-                nuevo: delGenero.any(_esNueva),
-                onTap: () => onElegirGenero(genero.id),
-              );
+              if (i < conCanciones.length) {
+                final genero = conCanciones[i];
+                final delGenero =
+                    canciones.where((c) => c.ritmoId == genero.id).toList();
+                return _TarjetaGenero(
+                  nombre: genero.nombre,
+                  cantidad: delGenero.length,
+                  color: colorDeGenero(generos, genero.id),
+                  nuevo: delGenero.any(_esNueva),
+                  onTap: () => onElegirGenero(genero.id),
+                );
+              }
+              final indiceExtra = i - conCanciones.length;
+              if (sinGenero.isNotEmpty && indiceExtra == 0) {
+                return _TarjetaGenero(
+                  nombre: 'Sin género',
+                  cantidad: sinGenero.length,
+                  color: _colorNeutro,
+                  nuevo: false,
+                  onTap: onElegirSinGenero,
+                );
+              }
+              return _TarjetaAgregarGenero(onTap: () => _agregarGenero(context));
             },
           ),
       ],
@@ -403,6 +437,104 @@ class _TarjetaGenero extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Cuadro con borde punteado en vez de relleno sólido — visualmente
+/// "vacío" a propósito, para que se lea como "agregar algo acá" y no
+/// como un género más de la lista.
+class _TarjetaAgregarGenero extends StatelessWidget {
+  const _TarjetaAgregarGenero({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: tema.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+              width: 1.4,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add, color: tema.colorScheme.onSurfaceVariant),
+                const SizedBox(height: 4),
+                Text(
+                  'Nuevo género',
+                  style: tema.textTheme.labelMedium
+                      ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Franja de color arriba de la lista filtrada, con el mismo color del
+/// cuadro que se tocó — la lista no queda "desconectada" visualmente del
+/// cuadro que llevó hasta ahí. `color` nulo (para "Todas las alabanzas")
+/// usa una superficie neutra en vez de forzar un color.
+class _EncabezadoFiltro extends StatelessWidget {
+  const _EncabezadoFiltro({
+    required this.color,
+    required this.titulo,
+    required this.onVolver,
+  });
+
+  final Color? color;
+  final String titulo;
+  final VoidCallback onVolver;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    final conColor = color != null;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      decoration: BoxDecoration(
+        color: color ?? tema.colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: Icon(
+              Icons.arrow_back,
+              color: conColor ? Colors.white : tema.colorScheme.onSurface,
+            ),
+            tooltip: 'Volver a géneros',
+            onPressed: onVolver,
+          ),
+          Expanded(
+            child: Text(
+              titulo,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: tema.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: conColor ? Colors.white : tema.colorScheme.onSurface,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
     );
   }
