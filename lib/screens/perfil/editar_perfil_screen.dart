@@ -104,6 +104,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
       instrumento: instrumento.isEmpty ? null : instrumento,
       nivelInstrumento: _nivel,
       fotoUrl: widget.miembro.fotoUrl,
+      fcmToken: widget.miembro.fcmToken,
     );
     await repositorio.actualizar(widget.miembro.id, actualizado);
     if (!mounted) return;
