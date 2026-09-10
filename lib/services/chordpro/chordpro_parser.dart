@@ -11,11 +11,14 @@ import 'package:app_alabanzas/models/chordpro/chordpro_modelo.dart';
 /// `start_of_prechorus`/`sopc` (y su cierre), que no es parte del spec
 /// oficial — ver doc de `TipoSeccion.preCoro`.
 ///
-/// Cualquier otra directiva entre llaves (`{title: ...}`, `{key: ...}`,
-/// `{comment: ...}`, etc.) se ignora a propósito: esos metadatos ya viven
-/// como campos propios en el modelo `Cancion` de Firestore (`titulo`,
-/// `tonoOriginal`), así que no hace falta que el parser los entienda para
-/// que el import de un archivo `.cho` real no falle.
+/// Cualquier otra directiva entre llaves (`{title: ...}`, `{comment: ...}`,
+/// etc.) se ignora a propósito: esos metadatos ya viven como campos
+/// propios en el modelo `Cancion` de Firestore (`titulo`, `tonoOriginal`),
+/// así que no hace falta que el parser los entienda para que el import de
+/// un archivo `.cho` real no falle. La excepción es `{key: ...}` *dentro*
+/// de una sección: ahí sí se interpreta, como el tono en el que arranca
+/// esa parte puntual — ver `SeccionChordPro.tonoBase`, para popurrís que
+/// cambian de tonalidad a mitad de camino.
 class ChordProParser {
   const ChordProParser._();
 
@@ -56,6 +59,7 @@ class ChordProParser {
     final secciones = <SeccionChordPro>[];
     var tipoActual = TipoSeccion.otra;
     var etiquetaActual = '';
+    String? tonoActual;
     var lineasActuales = <LineaChordPro>[];
 
     void cerrarSeccionActual() {
@@ -64,9 +68,11 @@ class ChordProParser {
           tipo: tipoActual,
           etiqueta: etiquetaActual,
           lineas: List.unmodifiable(lineasActuales),
+          tonoBase: tonoActual,
         ));
       }
       lineasActuales = <LineaChordPro>[];
+      tonoActual = null;
     }
 
     for (final lineaCruda in fuente.split('\n')) {
@@ -93,6 +99,14 @@ class ChordProParser {
           cerrarSeccionActual();
           tipoActual = TipoSeccion.otra;
           etiquetaActual = '';
+          continue;
+        }
+        // `{key: G}` dentro de una sección marca que esa parte puntual
+        // cambia de tono (popurrís/medleys) — fuera de una sección no
+        // significa nada acá, se ignora igual que el resto de la
+        // metadata (`title`, etc.), que ya vive en `Cancion` aparte.
+        if ((nombre == 'key' || nombre == 'k') && tipoActual != TipoSeccion.otra) {
+          tonoActual = (argumento != null && argumento.isNotEmpty) ? argumento : null;
           continue;
         }
         continue; // metadata u otra directiva no soportada: se ignora

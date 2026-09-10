@@ -208,13 +208,28 @@ class _SeccionWidget extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                seccion.etiqueta.toUpperCase(),
-                style: tema.textTheme.labelLarge?.copyWith(
-                  color: tema.colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
+              Row(
+                children: [
+                  Text(
+                    seccion.etiqueta.toUpperCase(),
+                    style: tema.textTheme.labelLarge?.copyWith(
+                      color: tema.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  // Solo aparece si esta parte puntual cambia de tono
+                  // respecto al resto de la canción — popurrís/medleys.
+                  // Ver doc de `SeccionChordPro.tonoBase`.
+                  if (seccion.tonoBase != null) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      'Tono ${seccion.tonoBase}',
+                      style: tema.textTheme.labelMedium
+                          ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ],
               ),
               IconButton(
                 icon: const Icon(Icons.note_add_outlined, size: 20),

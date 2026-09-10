@@ -133,8 +133,14 @@ class _EditorSimpleScreenState extends State<EditorSimpleScreen> {
               ))
           .toList();
       if (lineas.isEmpty) continue;
+      final tono = s.tonoController.text.trim();
       secciones.add(
-        SeccionChordPro(tipo: s.tipo, etiqueta: etiquetas[s]!, lineas: lineas),
+        SeccionChordPro(
+          tipo: s.tipo,
+          etiqueta: etiquetas[s]!,
+          lineas: lineas,
+          tonoBase: tono.isEmpty ? null : tono,
+        ),
       );
     }
     return CancionChordPro(secciones: secciones);
@@ -189,12 +195,24 @@ class _EditorSimpleScreenState extends State<EditorSimpleScreen> {
             ),
             const SizedBox(height: 12),
             for (final seccion in vistaPrevia.secciones) ...[
-              Text(
-                seccion.etiqueta.toUpperCase(),
-                style: tema.textTheme.labelLarge?.copyWith(
-                  color: tema.colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                ),
+              Row(
+                children: [
+                  Text(
+                    seccion.etiqueta.toUpperCase(),
+                    style: tema.textTheme.labelLarge?.copyWith(
+                      color: tema.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (seccion.tonoBase != null) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      'Tono ${seccion.tonoBase}',
+                      style: tema.textTheme.labelMedium
+                          ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ],
               ),
               for (final linea in seccion.lineas) LineaChordProWidget(linea: linea),
               const SizedBox(height: 12),
@@ -251,8 +269,10 @@ class _SeccionEditor extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
+                  flex: 2,
                   child: DropdownButtonFormField<TipoSeccion>(
                     initialValue: seccion.tipo,
                     decoration: InputDecoration(
@@ -270,6 +290,18 @@ class _SeccionEditor extends StatelessWidget {
                         onCambiar();
                       }
                     },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: seccion.tonoController,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(
+                      labelText: 'Tono',
+                      hintText: 'Si cambia',
+                    ),
+                    onChanged: (_) => onCambiar(),
                   ),
                 ),
                 if (onQuitar != null)
@@ -515,9 +547,11 @@ class _LineaEditable {
 }
 
 class _SeccionEditable {
-  _SeccionEditable({required this.tipo}) : lineas = [_LineaEditable()];
+  _SeccionEditable({required this.tipo})
+      : lineas = [_LineaEditable()],
+        tonoController = TextEditingController();
 
-  _SeccionEditable._cargada(this.tipo, this.lineas);
+  _SeccionEditable._cargada(this.tipo, this.lineas, this.tonoController);
 
   factory _SeccionEditable.desde(SeccionChordPro seccion) {
     final tipo = seccion.tipo == TipoSeccion.otra ? TipoSeccion.verso : seccion.tipo;
@@ -533,15 +567,24 @@ class _SeccionEditable {
       return _LineaEditable(letra: texto.letra, acordesPorPosicion: posiciones);
     }).toList();
     if (lineas.isEmpty) lineas.add(_LineaEditable());
-    return _SeccionEditable._cargada(tipo, lineas);
+    return _SeccionEditable._cargada(
+      tipo,
+      lineas,
+      TextEditingController(text: seccion.tonoBase ?? ''),
+    );
   }
 
   TipoSeccion tipo;
   final List<_LineaEditable> lineas;
 
+  /// Tono de esta sección, solo si cambia respecto al de la canción — ver
+  /// `SeccionChordPro.tonoBase`. Vacío en el caso normal.
+  final TextEditingController tonoController;
+
   void dispose() {
     for (final l in lineas) {
       l.dispose();
     }
+    tonoController.dispose();
   }
 }

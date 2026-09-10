@@ -69,6 +69,53 @@ void main() {
     expect(cancion.secciones[0].lineas[0].soloLetra, 'Hola');
   });
 
+  test('{key: ...} dentro de una sección marca su tono para popurrís', () {
+    const conCambioDeTono = '''
+{start_of_verse: Verso 1}
+[G]Cuán grande es tu amor
+{end_of_verse}
+{start_of_bridge: Puente cumbia}
+{key: Bm}
+[Bm]Otra canción del popurrí
+{end_of_bridge}
+''';
+    final cancion = ChordProParser.parse(conCambioDeTono);
+    expect(cancion.secciones[0].tonoBase, isNull);
+    expect(cancion.secciones[1].tonoBase, 'Bm');
+  });
+
+  test('{key: ...} fuera de una sección se ignora (es metadata suelta)', () {
+    final cancion = ChordProParser.parse(_fuente);
+    expect(cancion.secciones[0].tonoBase, isNull);
+  });
+
+  test('transponer también transporta el tono de sección (incluye menores)', () {
+    const conCambioDeTono = '''
+{start_of_bridge: Puente cumbia}
+{key: Bm}
+[Bm]Otra canción del popurrí
+{end_of_bridge}
+''';
+    final original = ChordProParser.parse(conCambioDeTono);
+    final transportada = original.transponer(2);
+    expect(transportada.secciones[0].tonoBase, 'C#m');
+  });
+
+  test('round-trip conserva el tono de sección de un popurrí', () {
+    const conCambioDeTono = '''
+{start_of_verse: Verso 1}
+[G]Cuán grande es tu amor
+{end_of_verse}
+{start_of_bridge: Puente cumbia}
+{key: Bm}
+[Bm]Otra canción del popurrí
+{end_of_bridge}
+''';
+    final original = ChordProParser.parse(conCambioDeTono);
+    final reconstruido = ChordProParser.parse(original.toChordPro());
+    expect(reconstruido, original);
+  });
+
   test('conserva líneas en blanco dentro de una sección (separan estrofas)', () {
     const conBlanco = '''
 {start_of_verse}
