@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:app_alabanzas/services/autenticacion_service.dart';
+import 'package:app_alabanzas/widgets/campo_auth.dart';
 
 class RecuperarContrasenaScreen extends StatefulWidget {
   const RecuperarContrasenaScreen({super.key});
@@ -77,13 +78,14 @@ class _RecuperarContrasenaScreenState
                 ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 28),
-          TextFormField(
+          CampoAuth(
             controller: _emailController,
+            hint: 'Correo',
             keyboardType: TextInputType.emailAddress,
             autofillHints: const [AutofillHints.email],
-            decoration: const InputDecoration(labelText: 'Correo'),
+            textInputAction: TextInputAction.done,
             validator: (valor) => (valor == null || !valor.contains('@'))
-                ? 'Ingresá un correo válido'
+                ? 'Ingresa un correo válido'
                 : null,
             onFieldSubmitted: (_) => _enviar(),
           ),
@@ -92,15 +94,22 @@ class _RecuperarContrasenaScreenState
             Text(_error!, style: TextStyle(color: tema.colorScheme.error)),
           ],
           const SizedBox(height: 24),
-          FilledButton(
-            onPressed: _enviando ? null : _enviar,
-            child: _enviando
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.4),
-                  )
-                : const Text('Enviar instrucciones'),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                shape: const StadiumBorder(),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              onPressed: _enviando ? null : _enviar,
+              child: _enviando
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                    )
+                  : const Text('Enviar instrucciones'),
+            ),
           ),
         ],
       ),
@@ -115,7 +124,7 @@ class _RecuperarContrasenaScreenState
             size: 56, color: tema.colorScheme.primary),
         const SizedBox(height: 20),
         Text(
-          'Revisá tu correo',
+          'Revisa tu correo',
           style:
               tema.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
         ),

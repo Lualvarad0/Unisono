@@ -68,11 +68,11 @@ class AutenticacionService {
         'email-already-in-use' => 'Ya existe una cuenta con ese correo.',
         'weak-password' => 'La contraseña necesita al menos 6 caracteres.',
         'too-many-requests' =>
-          'Demasiados intentos — esperá un momento y probá de nuevo.',
+          'Demasiados intentos — espera un momento y prueba de nuevo.',
         'network-request-failed' =>
           'Sin conexión — para entrar o crear una cuenta hace falta '
               'internet, aunque después la app funcione sin ella.',
-        _ => 'Algo no funcionó. Probá de nuevo en un momento.',
+        _ => 'Algo no funcionó. Prueba de nuevo en un momento.',
       };
 }
 
