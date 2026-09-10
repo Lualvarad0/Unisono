@@ -9,6 +9,7 @@ import 'package:app_alabanzas/services/firestore_service.dart';
 import 'package:app_alabanzas/services/conectividad_service.dart';
 import 'package:app_alabanzas/services/foto_perfil_service.dart';
 import 'package:app_alabanzas/services/invite_link_service.dart';
+import 'package:app_alabanzas/services/notificaciones_service.dart';
 import 'package:app_alabanzas/services/preferencias_service.dart';
 import 'package:app_alabanzas/screens/acceso/splash_screen.dart';
 import 'package:app_alabanzas/models/actividad.dart';
@@ -122,6 +123,9 @@ class _AppConProviders extends StatelessWidget {
         Provider<MiembroRepository>(create: (_) => MiembroRepository()),
         Provider<Repositorio<Miembro>>(
           create: (context) => context.read<MiembroRepository>(),
+        ),
+        Provider<NotificacionesService>(
+          create: (context) => NotificacionesService(context.read<MiembroRepository>()),
         ),
         // ActividadRepository suma watchOrdenadasPorFecha, que no es parte
         // del CRUD genérico — mismo patrón que CancionRepository arriba.

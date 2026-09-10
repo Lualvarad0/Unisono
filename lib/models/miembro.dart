@@ -44,6 +44,7 @@ class Miembro extends Equatable {
     this.instrumento,
     this.nivelInstrumento,
     this.fotoUrl,
+    this.fcmToken,
   });
 
   final String id;
@@ -77,6 +78,14 @@ class Miembro extends Equatable {
   /// nombre (ver `_Avatar` en `perfil_screen.dart`), nunca a un ícono
   /// genérico vacío.
   final String? fotoUrl;
+
+  /// Token de FCM del último dispositivo donde esta persona inició
+  /// sesión — ver `NotificacionesService`. Un solo token por Miembro a
+  /// propósito (no una lista): el push va al último celular donde
+  /// abrió sesión, no a todos los que usó alguna vez. Cambia cada vez
+  /// que Firebase rota el token o cuando alguien inicia sesión de
+  /// nuevo en otro dispositivo.
+  final String? fcmToken;
 
   String get nombreCompleto =>
       apellido.isEmpty ? nombre : '$nombre $apellido';
@@ -136,6 +145,7 @@ class Miembro extends Equatable {
               orElse: () => NivelInstrumento.principiante,
             ),
       fotoUrl: map['fotoUrl'] as String?,
+      fcmToken: map['fcmToken'] as String?,
     );
   }
 
@@ -151,6 +161,7 @@ class Miembro extends Equatable {
         'instrumento': instrumento,
         'nivelInstrumento': nivelInstrumento?.name,
         'fotoUrl': fotoUrl,
+        'fcmToken': fcmToken,
       };
 
   Miembro copyWith({
@@ -160,6 +171,7 @@ class Miembro extends Equatable {
     bool limpiarUid = false,
     String? fotoUrl,
     bool limpiarFoto = false,
+    String? fcmToken,
   }) {
     return Miembro(
       id: id,
@@ -172,6 +184,7 @@ class Miembro extends Equatable {
       instrumento: instrumento,
       nivelInstrumento: nivelInstrumento,
       fotoUrl: limpiarFoto ? null : (fotoUrl ?? this.fotoUrl),
+      fcmToken: fcmToken ?? this.fcmToken,
     );
   }
 
@@ -192,5 +205,6 @@ class Miembro extends Equatable {
         instrumento,
         nivelInstrumento,
         fotoUrl,
+        fcmToken,
       ];
 }

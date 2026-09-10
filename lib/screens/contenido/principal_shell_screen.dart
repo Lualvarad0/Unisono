@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'package:app_alabanzas/screens/contenido/home_screen.dart';
 import 'package:app_alabanzas/screens/contenido/repertorio_screen.dart';
 import 'package:app_alabanzas/screens/actividades/setlists_screen.dart';
 import 'package:app_alabanzas/screens/en_vivo/en_vivo_screen.dart';
 import 'package:app_alabanzas/screens/perfil/perfil_screen.dart';
+import 'package:app_alabanzas/services/autenticacion_service.dart';
+import 'package:app_alabanzas/services/notificaciones_service.dart';
 
 /// Contenedor con la barra inferior de navegación (Inicio, Repertorio, En
 /// vivo, Setlists, Perfil) — lo primero que se ve después de Acceso.
@@ -23,6 +26,18 @@ class PrincipalShellScreen extends StatefulWidget {
 
 class _PrincipalShellScreenState extends State<PrincipalShellScreen> {
   int _indice = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Acá y no antes (ej. en Splash) porque recién acá hay garantía de
+    // que ya se resolvió quién es el Miembro logueado — el token de
+    // este dispositivo necesita saber a cuál guardárselo.
+    final uid = context.read<AutenticacionService>().usuarioActual?.uid;
+    if (uid != null) {
+      context.read<NotificacionesService>().inicializar(uid);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

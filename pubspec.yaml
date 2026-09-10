@@ -67,6 +67,16 @@ dependencies:
   # "Mantener pantalla encendida" en AparienciaScreen.
   wakelock_plus: ^1.2.8
 
+  # Notificaciones push — ver NotificacionesService. Quién las manda de
+  # verdad son las Cloud Functions (carpeta functions/), esto solo recibe
+  # el token del dispositivo y muestra el aviso.
+  firebase_messaging: ^15.1.3
+
+  # Mostrar el aviso mientras la app está abierta — FCM por sí solo solo
+  # pinta la notificación del sistema cuando la app está en segundo
+  # plano o cerrada, no en primer plano.
+  flutter_local_notifications: ^18.0.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
