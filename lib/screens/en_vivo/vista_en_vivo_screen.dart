@@ -433,13 +433,28 @@ class _SeccionEnVivo extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            seccion.etiqueta.toUpperCase(),
-            style: tema.textTheme.labelLarge?.copyWith(
-              color: tema.colorScheme.primary,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-            ),
+          Row(
+            children: [
+              Text(
+                seccion.etiqueta.toUpperCase(),
+                style: tema.textTheme.labelLarge?.copyWith(
+                  color: tema.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              // Solo aparece si esta parte puntual cambia de tono respecto
+              // al resto de la canción — popurrís/medleys. Ver doc de
+              // `SeccionChordPro.tonoBase`.
+              if (seccion.tonoBase != null) ...[
+                const SizedBox(width: 8),
+                Text(
+                  'Tono ${seccion.tonoBase}',
+                  style: tema.textTheme.labelLarge
+                      ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 12),
           for (final linea in seccion.lineas)

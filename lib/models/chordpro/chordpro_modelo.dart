@@ -66,20 +66,31 @@ class SeccionChordPro extends Equatable {
   final String etiqueta;
   final List<LineaChordPro> lineas;
 
+  /// Tono en el que arranca esta sección, si es distinto al de la
+  /// canción — para popurrís/medleys que cambian de tonalidad a mitad de
+  /// camino (ej. "No Callaré" de Miel San Marcos). `null` en el caso
+  /// normal: una canción de un solo tono no necesita marcar nada acá, el
+  /// tono ya se ve en `Cancion.tonoOriginal`.
+  final String? tonoBase;
+
   const SeccionChordPro({
     required this.tipo,
     required this.etiqueta,
     required this.lineas,
+    this.tonoBase,
   });
 
   SeccionChordPro transponer(int semitonos) => SeccionChordPro(
         tipo: tipo,
         etiqueta: etiqueta,
         lineas: lineas.map((l) => l.transponer(semitonos)).toList(),
+        // Se transporta como un acorde (no con la escala de 12 notas nomás)
+        // para que tonos menores como "Bm" también se transporten bien.
+        tonoBase: tonoBase == null ? null : Acorde.parse(tonoBase!).transponer(semitonos).toString(),
       );
 
   @override
-  List<Object?> get props => [tipo, etiqueta, lineas];
+  List<Object?> get props => [tipo, etiqueta, lineas, tonoBase];
 }
 
 /// Una canción completa ya parseada: la salida de `ChordProParser.parse`.
@@ -108,6 +119,7 @@ class CancionChordPro extends Equatable {
     for (final seccion in secciones) {
       final inicio = _directivaInicio(seccion.tipo);
       if (inicio != null) buffer.writeln('{$inicio: ${seccion.etiqueta}}');
+      if (seccion.tonoBase != null) buffer.writeln('{key: ${seccion.tonoBase}}');
       for (final linea in seccion.lineas) {
         buffer.writeln(linea.toChordPro());
       }
