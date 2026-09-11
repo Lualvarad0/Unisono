@@ -164,6 +164,19 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
       builder: (_) => const DialogoNuevoGenero(),
     );
     if (nombre == null || nombre.isEmpty || !mounted) return;
+    // Mismo criterio que `_resolverArtista`: sin distinguir mayúsculas, para
+    // no terminar con "Adoración" y "adoración" como dos géneros separados.
+    final existentes = await repositorio.fetchAll();
+    for (final ritmo in existentes) {
+      if (ritmo.nombre.toLowerCase() == nombre.toLowerCase()) {
+        if (!mounted) return;
+        setState(() => _ritmoId = ritmo.id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ya existía el género "${ritmo.nombre}" — se usó ese.')),
+        );
+        return;
+      }
+    }
     final id = await repositorio.crear(Ritmo(id: '', nombre: nombre));
     if (!mounted) return;
     setState(() => _ritmoId = id);

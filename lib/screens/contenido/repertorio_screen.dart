@@ -278,6 +278,19 @@ class _ExplorarGeneros extends StatelessWidget {
       builder: (_) => const DialogoNuevoGenero(),
     );
     if (nombre == null || nombre.isEmpty) return;
+    // Sin distinguir mayúsculas, para no terminar con "Adoración" y
+    // "adoración" como dos géneros separados — mismo criterio que al
+    // agregar un género desde Nueva alabanza.
+    for (final ritmo in generos) {
+      if (ritmo.nombre.toLowerCase() == nombre.toLowerCase()) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ya existía el género "${ritmo.nombre}".')),
+          );
+        }
+        return;
+      }
+    }
     await repositorio.crear(Ritmo(id: '', nombre: nombre));
   }
 
