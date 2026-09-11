@@ -183,7 +183,12 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
   }
 
   Future<void> _guardar() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Falta el título — revisá arriba de todo.')),
+      );
+      return;
+    }
     if (_contenidoChordPro.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Falta cargar la letra y los acordes.')),

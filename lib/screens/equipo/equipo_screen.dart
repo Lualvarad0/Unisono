@@ -7,6 +7,7 @@ import 'package:app_alabanzas/repositories/miembro_repository.dart';
 import 'package:app_alabanzas/screens/equipo/invitar_miembro_screen.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
 import 'package:app_alabanzas/widgets/acciones_dialogo.dart';
+import 'package:app_alabanzas/widgets/visor_foto.dart';
 
 /// "Mi equipo": la lista de integrantes con sus roles. Cualquiera la puede
 /// ver; solo quien tiene el rol Líder puede tocar a alguien para cambiarle
@@ -101,10 +102,17 @@ class _TarjetaMiembro extends StatelessWidget {
         ? '?'
         : miembro.nombre.trim()[0].toUpperCase();
 
+    final foto = miembro.fotoUrl;
     return Card(
       child: ListTile(
         onTap: editable ? () => _editarRoles(context) : null,
-        leading: CircleAvatar(child: Text(iniciales)),
+        leading: GestureDetector(
+          onTap: foto == null ? null : () => mostrarFotoCompleta(context, foto),
+          child: CircleAvatar(
+            backgroundImage: foto == null ? null : NetworkImage(foto),
+            child: foto == null ? Text(iniciales) : null,
+          ),
+        ),
         title: Text(esVos ? '${miembro.nombre} (vos)' : miembro.nombre),
         subtitle: Wrap(
           spacing: 6,

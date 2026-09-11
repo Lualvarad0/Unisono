@@ -12,6 +12,7 @@ import 'package:app_alabanzas/screens/notas/mis_notas_screen.dart';
 import 'package:app_alabanzas/screens/perfil/acerca_de_screen.dart';
 import 'package:app_alabanzas/screens/perfil/apariencia_screen.dart';
 import 'package:app_alabanzas/screens/perfil/editar_perfil_screen.dart';
+import 'package:app_alabanzas/widgets/visor_foto.dart';
 
 /// Pestaña "Perfil": quién sos (nombre, correo, roles, datos personales,
 /// foto) con edición completa en una pantalla propia — no un diálogo
@@ -392,13 +393,16 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
-    return Stack(
+    final foto = fotoUrl;
+    return GestureDetector(
+      onTap: foto == null ? null : () => mostrarFotoCompleta(context, foto),
+      child: Stack(
       children: [
         CircleAvatar(
           radius: 32,
           backgroundColor: AppTheme.acento.withValues(alpha: 0.16),
-          backgroundImage: fotoUrl == null ? null : NetworkImage(fotoUrl!),
-          child: fotoUrl != null
+          backgroundImage: foto == null ? null : NetworkImage(foto),
+          child: foto != null
               ? null
               : Text(
                   iniciales,
@@ -420,6 +424,7 @@ class _Avatar extends StatelessWidget {
             ),
           ),
       ],
+      ),
     );
   }
 }
