@@ -398,15 +398,30 @@ class _LineaEditor extends StatelessWidget {
                   ),
                   onChanged: (_) => onCambiar(),
                 ),
-                const SizedBox(height: 6),
-                if (palabras.isEmpty)
-                  TextButton.icon(
-                    onPressed: () => _editarAcorde(context, 0),
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Acorde (línea instrumental)'),
-                  )
-                else
-                  Wrap(
+                const SizedBox(height: 8),
+                // Fondo propio + etiqueta a propósito: sin esto, la fila de
+                // palabras tocables de abajo se ve como la misma letra
+                // repetida dos veces en vez de la zona para poner acordes.
+                Text(
+                  'ACORDES (tocá una palabra)',
+                  style: tema.textTheme.labelSmall
+                      ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: tema.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: palabras.isEmpty
+                      ? TextButton.icon(
+                          onPressed: () => _editarAcorde(context, 0),
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Acorde (línea instrumental)'),
+                        )
+                      : Wrap(
                     spacing: 4,
                     runSpacing: 4,
                     crossAxisAlignment: WrapCrossAlignment.end,
@@ -445,6 +460,7 @@ class _LineaEditor extends StatelessWidget {
                         ),
                     ],
                   ),
+                ),
               ],
             ),
           ),
