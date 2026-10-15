@@ -1,0 +1,25 @@
+rules_version = '2';
+
+// Todo el equipo comparte una sola base (un proyecto de Firebase = una
+// iglesia, ver README) — por eso cualquiera que esté logueado puede leer
+// y escribir todo el contenido compartido (repertorio, setlists, equipo).
+// Lo único que esto cierra es el acceso SIN sesión: antes "allow read: if
+// true" dejaba leer toda la base a cualquiera en internet, sin cuenta ni
+// la app instalada — la configuración de Firebase va embebida en el APK,
+// no es secreta, así que hacía falta esto antes de distribuir la app en
+// público.
+//
+// No hay reglas más finas por rol (ej. "solo el líder puede borrar una
+// canción") porque `Miembro.id` (el documento) no es el mismo valor que
+// `Miembro.uid` (quién inició sesión) — una regla no puede buscar "el
+// Miembro de este uid" sin una query, y las reglas de seguridad no
+// pueden hacer queries, solo lecturas puntuales por id. Mientras ese
+// modelo no cambie, el control de quién puede hacer qué sigue viviendo
+// en la UI (ver EnVivoScreen.esLider, EquipoScreen.editable), no acá.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
