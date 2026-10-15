@@ -1,0 +1,96 @@
+name: Build & publish release APK
+
+# Build de verdad — firmado con la clave de subida real (ver
+# android/app/build.gradle.kts y android/key.properties, reconstruido acá
+# desde Secrets) — para publicar como GitHub Release. A diferencia de
+# build-debug-apk.yml (que solo sirve para probar durante el desarrollo,
+# firmado con una clave efímera distinta en cada corrida), el resultado de
+# este workflow es lo que se linkea desde la landing page: cualquiera
+# puede descargarlo sin login, y cada versión nueva se puede instalar
+# encima de la anterior sin desinstalar primero.
+#
+# Se dispara al empujar un tag "v*" (ej. v1.0.0) o a mano desde la pestaña
+# Actions — en ese caso toma la versión de pubspec.yaml.
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # para crear el Release y subir el APK como asset
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.2"
+          channel: stable
+
+      # Mismo patrón que build-debug-apk.yml: estos dos archivos están en
+      # .gitignore (config de Firebase, no se comitea), se reconstruyen
+      # acá desde un Secret del repo.
+      - name: Escribir firebase_options.dart
+        env:
+          FIREBASE_OPTIONS_DART: ${{ secrets.FIREBASE_OPTIONS_PARA_SECRET }}
+        run: printf '%s' "$FIREBASE_OPTIONS_DART" > lib/firebase_options.dart
+
+      - name: Escribir google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+
+      # El keystore de subida tampoco se comitea (ver .gitignore) — se
+      # reconstruye acá desde Secrets, igual que los dos de arriba.
+      - name: Escribir el keystore de release
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/unisono-upload.jks
+          cat > android/key.properties <<KEYPROPS
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyPassword=$ANDROID_KEYSTORE_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          storeFile=unisono-upload.jks
+          KEYPROPS
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build apk --release
+
+      # Si se disparó con un tag (v1.2.3), ese nombra el Release. Si se
+      # corrió a mano (sin tag), usa lo que diga pubspec.yaml.
+      - name: Determinar nombre de versión
+        id: version
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "nombre=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          else
+            version=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')
+            echo "nombre=v$version" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Renombrar el APK
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk \
+             "dist/unisono-${{ steps.version.outputs.nombre }}.apk"
+
+      - name: Publicar GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.nombre }}
+          name: "Unísono ${{ steps.version.outputs.nombre }}"
+          files: dist/unisono-${{ steps.version.outputs.nombre }}.apk
