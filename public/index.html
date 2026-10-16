@@ -417,6 +417,26 @@
 
     .tarjeta { transition: transform .2s ease, border-color .2s ease; }
     .tarjeta:hover { transform: translateY(-3px); border-color: #3C3C47; }
+
+    @keyframes pulso-en-vivo {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(47, 111, 237, .35); }
+      50% { box-shadow: 0 0 0 7px rgba(47, 111, 237, 0); }
+    }
+    .tarjeta-en-vivo .icono-tarjeta {
+      animation: pulso-en-vivo 2.2s ease-out infinite;
+    }
+
+    @keyframes garabatear {
+      0%, 100% { transform: rotate(0deg); }
+      20% { transform: rotate(-8deg); }
+      40% { transform: rotate(6deg); }
+      60% { transform: rotate(-4deg); }
+      80% { transform: rotate(3deg); }
+    }
+    .tarjeta-notas .icono-tarjeta svg {
+      transform-origin: 70% 90%;
+      animation: garabatear 3.5s ease-in-out infinite;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -441,10 +461,8 @@
       <div class="hero-texto">
         <h1>Tu repertorio.<br>Tu equipo.<br><span>Siempre sincronizados.</span></h1>
         <p class="subtitulo">
-          Unísono es la app para equipos de alabanza: letra, acordes y
-          tonalidades a mano de todos, incluso sin internet. Armá el
-          setlist, transportá el tono y tocá en vivo sin depender de la
-          señal del lugar.
+          Letra, acordes y tonalidades a mano de todo tu equipo — incluso
+          sin internet.
         </p>
         <div class="botonera">
           <a id="boton-descarga" class="boton-descarga" href="https://github.com/Lualvarad0/Unisono/releases/latest" target="_blank" rel="noopener">
@@ -470,24 +488,24 @@
               <span></span><span></span><span></span>
             </div>
             <div class="demo-encabezado">
-              <span class="demo-titulo">Cuán Grande Es Mi Dios</span><br>
-              <span class="demo-tono">Tono · G</span>
+              <span class="demo-titulo">Tu Presencia</span><br>
+              <span class="demo-tono">Tono · D</span>
             </div>
             <div class="demo-linea">
-              <div class="demo-acordes"><span>G</span><span>D</span></div>
-              <div class="demo-letra">Cuán grande es tu amor</div>
+              <div class="demo-acordes"><span>D</span><span>G</span></div>
+              <div class="demo-letra">Tu presencia aquí está</div>
             </div>
             <div class="demo-linea">
-              <div class="demo-acordes"><span>Em</span><span>C</span></div>
-              <div class="demo-letra">Grande en poder</div>
+              <div class="demo-acordes"><span>Em</span><span>A</span></div>
+              <div class="demo-letra">Nos querés transformar</div>
             </div>
             <div class="demo-linea">
-              <div class="demo-acordes"><span>G</span><span>D</span><span>Em</span></div>
-              <div class="demo-letra">Cuán grande es mi Dios</div>
+              <div class="demo-acordes"><span>D</span><span>G</span><span>A</span></div>
+              <div class="demo-letra">Cantaremos sin cesar</div>
             </div>
             <div class="demo-linea">
-              <div class="demo-acordes"><span>C</span><span>D</span></div>
-              <div class="demo-letra">Cuán grande es mi Dios</div>
+              <div class="demo-acordes"><span>Bm</span><span>A</span></div>
+              <div class="demo-letra">Tu amor es sin igual</div>
             </div>
           </div>
         </div>
@@ -497,8 +515,7 @@
     <section class="bloque" id="funciones">
       <h2 class="titulo-seccion reveal">Pensada para el ensayo y el día del servicio</h2>
       <p class="copete-seccion reveal">
-        Nada de carpetas con hojas sueltas ni grupos de WhatsApp con PDFs
-        viejos — todo el equipo mira lo mismo, actualizado.
+        Se acabaron las carpetas sueltas y los PDFs viejos por WhatsApp.
       </p>
       <div class="grilla-caracteristicas">
         <div class="tarjeta reveal">
@@ -506,42 +523,42 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
           </div>
           <h3>Letra y acordes juntos</h3>
-          <p>Cargá la canción una vez; los acordes quedan ubicados sobre la letra, con transporte de tono instantáneo para cualquier instrumento.</p>
+          <p>Acordes ubicados sobre la letra, con transporte de tono instantáneo.</p>
         </div>
         <div class="tarjeta reveal">
           <div class="icono-tarjeta">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </div>
           <h3>Tu equipo, tu espacio</h3>
-          <p>Cada equipo arma el suyo con un código de 6 caracteres — nadie se mezcla con el repertorio de otro grupo por accidente.</p>
+          <p>Cada equipo arma el suyo con un código de 6 caracteres — nada se mezcla con otro grupo.</p>
         </div>
-        <div class="tarjeta reveal">
+        <div class="tarjeta reveal tarjeta-en-vivo">
           <div class="icono-tarjeta">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-8.49a6 6 0 0 0 0 8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
           </div>
           <h3>Modo en vivo sin internet</h3>
-          <p>El líder inicia una canción y el resto la ve en el momento — sincronizado por Bluetooth/Wi-Fi local, sin depender de la señal del salón.</p>
+          <p>El líder avanza y el resto sigue en el momento, por Bluetooth/Wi-Fi local.</p>
         </div>
         <div class="tarjeta reveal">
           <div class="icono-tarjeta">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
           </div>
           <h3>Setlists con aviso automático</h3>
-          <p>Armá el setlist del servicio y cada integrante recibe una notificación cuando se arma, cambia, o está por empezar.</p>
+          <p>Armá el setlist y cada integrante recibe un aviso cuando se arma o cambia.</p>
         </div>
         <div class="tarjeta reveal">
           <div class="icono-tarjeta">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c6-4 9-8.5 9-13A9 9 0 0 0 3 9c0 4.5 3 9 9 13Z"/><circle cx="12" cy="9" r="2.5"/></svg>
           </div>
           <h3>Funciona sin internet</h3>
-          <p>Todo lo que ya abriste antes queda guardado en el celular — el repertorio se puede consultar aunque no haya datos ni Wi-Fi.</p>
+          <p>Lo que ya abriste antes queda guardado — se consulta sin datos ni Wi-Fi.</p>
         </div>
-        <div class="tarjeta reveal">
+        <div class="tarjeta reveal tarjeta-notas">
           <div class="icono-tarjeta">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"/><path d="M16 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>
           </div>
-          <h3>Código abierto</h3>
-          <p>Todo el código está disponible en GitHub — se puede revisar, reportar un problema, o contribuir.</p>
+          <h3>Notas y ejercicios</h3>
+          <p>Anotaciones por canción y consignas de práctica que cada integrante marca como hecha.</p>
         </div>
       </div>
     </section>
@@ -549,12 +566,8 @@
     <section class="bloque" id="como-funciona">
       <h2 class="titulo-seccion reveal">Pensada para sincronizar incluso sin señal</h2>
       <p class="copete-seccion reveal">
-        El repertorio y los setlists se descargan antes del servicio con
-        wifi o datos — a partir de ahí quedan guardados en el celular.
-        "Modo en vivo" mantiene a todo el equipo viendo la misma sección
-        a medida que el líder avanza, por internet como de costumbre, y
-        con un modo punto a punto por Bluetooth/Wi-Fi local (todavía en
-        pruebas) pensado para salones sin señal.
+        El repertorio se descarga antes del servicio; "Modo en vivo"
+        mantiene a todos en la misma sección a medida que el líder avanza.
       </p>
       <svg
         class="diagrama-sync reveal"
@@ -596,32 +609,28 @@
         <text x="308" y="178" class="etiqueta etiqueta-tenue">El resto del equipo</text>
       </svg>
       <p class="explicacion-sync reveal">
-        Como el repertorio ya se descargó de antemano, sincronizar en
-        vivo es liviano: cada celular solo necesita enterarse de "en qué
-        parte vamos", no bajar nada nuevo — el camino por internet ya
-        funciona hoy; el camino 100% local (sin pasar por ningún
-        servidor) es la pieza que todavía se está terminando de probar.
+        Por internet ya funciona hoy. El camino 100% local, sin pasar por
+        ningún servidor, todavía se está terminando de probar.
       </p>
     </section>
 
     <section class="bloque" id="instalar">
       <h2 class="titulo-seccion reveal">Cómo instalarla</h2>
       <p class="copete-seccion reveal">
-        Como todavía no está en Google Play, el instalador se descarga
-        directo de GitHub. Tres pasos:
+        Todavía no está en Google Play — el instalador se baja directo de GitHub.
       </p>
       <div class="pasos">
         <div class="paso reveal">
           <h3>Descargá el APK</h3>
-          <p>Tocá "Descargar para Android" arriba, desde el celular donde vas a usar la app.</p>
+          <p>Tocá "Descargar para Android" arriba, desde tu celular.</p>
         </div>
         <div class="paso reveal">
           <h3>Permití instalar</h3>
-          <p>Android va a pedir habilitar "Instalar apps desconocidas" para el navegador — es normal en apps que no vienen de la tienda.</p>
+          <p>Android pide habilitar "Apps desconocidas" — normal fuera de la tienda.</p>
         </div>
         <div class="paso reveal">
           <h3>Abrí el archivo</h3>
-          <p>Tocá la descarga para instalar. Las próximas versiones se actualizan encima, sin perder tus datos.</p>
+          <p>Las próximas versiones se actualizan encima, sin perder tus datos.</p>
         </div>
       </div>
     </section>
