@@ -13,6 +13,33 @@ class CrearCuentaScreen extends StatefulWidget {
   State<CrearCuentaScreen> createState() => _CrearCuentaScreenState();
 }
 
+/// No vive en `AutenticacionService` porque es una regla de UI (qué se deja
+/// escribir en Crear cuenta), no una regla de negocio — Firebase Auth
+/// acepta cualquier contraseña de 6+ caracteres, esto es más estricto a
+/// propósito para evitar contraseñas débiles o compuestas solo de
+/// espacios.
+String? _validarContrasenaFuerte(String? valor) {
+  if (valor == null || valor.trim().isEmpty) {
+    return 'Ingresa una contraseña';
+  }
+  if (valor.trim() != valor) {
+    return 'No puede empezar ni terminar con un espacio';
+  }
+  if (valor.length < 8) {
+    return 'Usa al menos 8 caracteres';
+  }
+  if (!RegExp(r'[A-Z]').hasMatch(valor)) {
+    return 'Agrega al menos una mayúscula';
+  }
+  if (!RegExp(r'[a-z]').hasMatch(valor)) {
+    return 'Agrega al menos una minúscula';
+  }
+  if (!RegExp(r'[0-9]').hasMatch(valor)) {
+    return 'Agrega al menos un número';
+  }
+  return null;
+}
+
 class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
@@ -107,9 +134,9 @@ class _CrearCuentaScreenState extends State<CrearCuentaScreen> {
                           esContrasena: true,
                           autofillHints: const [AutofillHints.newPassword],
                           textInputAction: TextInputAction.next,
-                          validator: (valor) => (valor == null || valor.length < 6)
-                              ? 'La contraseña necesita al menos 6 caracteres'
-                              : null,
+                          validator: _validarContrasenaFuerte,
+                          helperText: 'Mínimo 8 caracteres, con mayúscula, '
+                              'minúscula y número',
                         ),
                         const SizedBox(height: 14),
                         CampoAuth(

@@ -22,6 +22,7 @@ class CampoAuth extends StatefulWidget {
     this.validator,
     this.onFieldSubmitted,
     this.textInputAction,
+    this.helperText,
   });
 
   final TextEditingController controller;
@@ -32,6 +33,7 @@ class CampoAuth extends StatefulWidget {
   final String? Function(String?)? validator;
   final ValueChanged<String>? onFieldSubmitted;
   final TextInputAction? textInputAction;
+  final String? helperText;
 
   @override
   State<CampoAuth> createState() => _CampoAuthState();
@@ -53,6 +55,8 @@ class _CampoAuthState extends State<CampoAuth> {
       textInputAction: widget.textInputAction,
       decoration: InputDecoration(
         hintText: widget.hint,
+        helperText: widget.helperText,
+        helperMaxLines: 2,
         filled: true,
         fillColor: tema.colorScheme.surfaceContainerHigh,
         suffixIcon: widget.esContrasena
