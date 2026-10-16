@@ -11,10 +11,10 @@ import 'package:google_fonts/google_fonts.dart';
 /// Las superficies (fondo, tarjeta, campo) son gris neutro de verdad, no
 /// derivadas de `ColorScheme.fromSeed` — ese constructor tiñe TODO de la
 /// tonalidad del seed, campos y tarjetas incluidos, y el resultado
-/// termina leyéndose como "toda la app es violeta" en vez de "la app es
-/// gris con un acento violeta". Acá el violeta (`#6C63FF`, el mismo del
-/// ícono) queda reservado a lo que de verdad es acento: botones,
-/// selección activa, foco — nunca el fondo general.
+/// termina leyéndose como "toda la app es del color de acento" en vez de
+/// "la app es gris con un acento de color". Acá el acento (`acento`, abajo)
+/// queda reservado a lo que de verdad es acento: botones, selección
+/// activa, foco — nunca el fondo general.
 ///
 /// Las vistas de Músico y Cantante (Paso 5) parten de acá pero además
 /// suben el tamaño de letra puntual del bloque de la canción activa — dos
@@ -23,7 +23,7 @@ import 'package:google_fonts/google_fonts.dart';
 class AppTheme {
   AppTheme._();
 
-  static const acento = Color(0xFF6C63FF);
+  static const acento = Color(0xFF2F6FED);
   static const radio = 8.0;
 
   /// Ningún estado de sincronización usa rojo de error — sin Internet no
@@ -52,7 +52,9 @@ class AppTheme {
             surface: Color(0xFF121214),
             onSurface: Color(0xFFE4E4E7),
             onSurfaceVariant: Color(0xFFA1A1AA),
+            surfaceContainerLow: Color(0xFF18181B),
             surfaceContainer: Color(0xFF1C1C1F),
+            surfaceContainerHigh: Color(0xFF232327),
             surfaceContainerHighest: Color(0xFF29292E),
             outline: Color(0xFF525258),
           )
@@ -66,7 +68,9 @@ class AppTheme {
             surface: Color(0xFFFAFAFA),
             onSurface: Color(0xFF1C1C1F),
             onSurfaceVariant: Color(0xFF5C5C63),
+            surfaceContainerLow: Color(0xFFF6F6F7),
             surfaceContainer: Color(0xFFF1F1F2),
+            surfaceContainerHigh: Color(0xFFEAEAEC),
             surfaceContainerHighest: Color(0xFFE4E4E7),
             outline: Color(0xFFC7C7CD),
           );

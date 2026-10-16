@@ -63,7 +63,11 @@ class _CampoAuthState extends State<CampoAuth> {
             : null,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(28),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: tema.colorScheme.outline.withValues(alpha: 0.4)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(28),
+          borderSide: BorderSide(color: tema.colorScheme.primary, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
       ),
