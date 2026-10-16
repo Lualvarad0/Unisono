@@ -2,21 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:provider/provider.dart';
 
-import 'package:app_alabanzas/core/invite_link.dart';
+import 'package:app_alabanzas/models/equipo.dart';
 import 'package:app_alabanzas/models/miembro.dart';
 import 'package:app_alabanzas/repositories/miembro_repository.dart';
 import 'package:app_alabanzas/widgets/encabezado_seccion.dart';
 
 /// Pantalla para que el líder invite a alguien nuevo al equipo: crea un
 /// `Miembro` con nombre y rol pero sin `uid` — el mismo estado "sin
-/// reclamar" que ya usa `SeleccionRolScreen`. La persona invitada puede
-/// tocar el enlace generado acá (si ya tiene la app instalada, la abre
-/// directo en "¿Sos vos?" — ver InviteLinkService) o, si no lo encuentra
-/// entre sus mensajes, buscar su nombre a mano en "¿Quién sos?".
-///
-/// Sin cloud functions ni envío de email: el link se comparte a mano por
-/// el canal que el líder prefiera (WhatsApp, SMS, etc.) — ver
-/// `construirEnlaceInvitacion`.
+/// reclamar" que ya usa el flujo de "Unirme con un código"
+/// (`ElegirEquipoScreen`). La persona invitada se suma con el código del
+/// equipo (ver `EquipoScreen`, lo muestra arriba de todo) y ahí elige su
+/// nombre de la lista en vez de quedar como "integrante nuevo".
 class InvitarMiembroScreen extends StatefulWidget {
   const InvitarMiembroScreen({super.key});
 
@@ -40,14 +36,15 @@ class _InvitarMiembroScreenState extends State<InvitarMiembroScreen> {
     if (nombre.isEmpty || _roles.isEmpty) return;
     setState(() => _invitando = true);
     final repositorio = context.read<MiembroRepository>();
-    final id = await repositorio.crear(
+    await repositorio.crear(
       Miembro(id: '', nombre: nombre, roles: _roles.toList()),
     );
     if (!mounted) return;
-    final enlace = construirEnlaceInvitacion(id);
+    final codigo = context.read<Equipo>().codigo;
     final mensaje = 'Te sumamos a Unísono como '
         '${_roles.map((r) => r.nombreVisible.toLowerCase()).join(' y ')}. '
-        'Descargá la app y abrí este enlace para unirte: $enlace';
+        'Descargá la app, tocá "Unirme con un código", usá $codigo y elegí '
+        'tu nombre de la lista.';
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

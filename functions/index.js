@@ -27,9 +27,13 @@ async function notificar(tokens, notification, data = {}) {
   }
 }
 
-/** Tokens FCM de todo el equipo, salvo quien se excluya (ej. quien generó el aviso). */
-async function tokensDelEquipo({ excluirId } = {}) {
-  const snapshot = await db.collection("miembros").get();
+/**
+ * Tokens FCM de todo UN equipo puntual (ver `equipos/{equipoId}/miembros`
+ * — cada equipo tiene su propia base aislada, no hay un "equipo" global),
+ * salvo quien se excluya (ej. quien generó el aviso).
+ */
+async function tokensDelEquipo(equipoId, { excluirId } = {}) {
+  const snapshot = await db.collection("equipos").doc(equipoId).collection("miembros").get();
   return snapshot.docs
     .filter((doc) => doc.id !== excluirId)
     .map((doc) => doc.data().fcmToken)
@@ -44,8 +48,10 @@ async function tokensDelEquipo({ excluirId } = {}) {
  * cliente— dispare `onModoEnVivoIniciado`/`onSetlistEscrito` a repetición
  * tocando el mismo campo varias veces seguidas, mandándole un push a
  * todo el equipo cada vez. Esto frena eso: un mismo aviso (misma
- * `clave`) no se repite dentro de la ventana, sin importar cuántas
- * escrituras lo disparen.
+ * `clave`, ya con el equipo adentro) no se repite dentro de la ventana,
+ * sin importar cuántas escrituras lo disparen. Colección propia a nivel
+ * raíz (no adentro de cada equipo) porque es puro control interno, nunca
+ * la lee ni la escribe el cliente.
  */
 const VENTANA_RATE_LIMIT_MS = 2 * 60 * 1000;
 
@@ -67,107 +73,123 @@ async function dentroDelLimite(clave) {
  * real) para que los celulares sepan qué mostrar — acá solo se avisa
  * al resto que arrancó.
  */
-exports.onModoEnVivoIniciado = onDocumentUpdated("actividades/{actividadId}", async (event) => {
-  const antes = event.data.before.data();
-  const despues = event.data.after.data();
-  if (antes.cancionActivaId || !despues.cancionActivaId) return;
-  if (await dentroDelLimite(`modoEnVivo_${event.params.actividadId}`)) return;
+exports.onModoEnVivoIniciado = onDocumentUpdated(
+  "equipos/{equipoId}/actividades/{actividadId}",
+  async (event) => {
+    const antes = event.data.before.data();
+    const despues = event.data.after.data();
+    if (antes.cancionActivaId || !despues.cancionActivaId) return;
+    const { equipoId, actividadId } = event.params;
+    if (await dentroDelLimite(`${equipoId}_modoEnVivo_${actividadId}`)) return;
 
-  const tokens = await tokensDelEquipo({});
-  await notificar(tokens, {
-    title: "🔴 Modo en vivo",
-    body: `El líder inició la transmisión de "${despues.nombre}"`,
-  });
-});
+    const tokens = await tokensDelEquipo(equipoId);
+    await notificar(tokens, {
+      title: "🔴 Modo en vivo",
+      body: `El líder inició la transmisión de "${despues.nombre}"`,
+    });
+  },
+);
 
 /**
  * Setlist armado, cambiado, o con una canción/cantante reasignado — los
  * tres pasan por escrituras del mismo documento `Actividad`, así que se
  * comparan `before`/`after` acá en vez de triplicar el trigger.
  */
-exports.onSetlistEscrito = onDocumentWritten("actividades/{actividadId}", async (event) => {
-  const despuesExiste = event.data.after.exists;
-  if (!despuesExiste) return;
-  const despues = event.data.after.data();
+exports.onSetlistEscrito = onDocumentWritten(
+  "equipos/{equipoId}/actividades/{actividadId}",
+  async (event) => {
+    const despuesExiste = event.data.after.exists;
+    if (!despuesExiste) return;
+    const despues = event.data.after.data();
+    const { equipoId, actividadId } = event.params;
 
-  const antesExiste = event.data.before.exists;
-  if (!antesExiste) {
-    if ((despues.setlist || []).length === 0) return;
-    if (await dentroDelLimite(`setlist_${event.params.actividadId}`)) return;
-    const tokens = await tokensDelEquipo({});
-    await notificar(tokens, {
-      title: "📋 Nuevo setlist",
-      body: `Se armó el setlist de "${despues.nombre}"`,
-    });
-    return;
-  }
-
-  const antes = event.data.before.data();
-  const setlistAntes = antes.setlist || [];
-  const setlistDespues = despues.setlist || [];
-
-  // Misma canción+orden con otro cantante = reasignación puntual, se avisa
-  // solo a quien queda asignado ahora (no a todo el equipo).
-  const asignaciones = [];
-  for (const entrada of setlistDespues) {
-    const anterior = setlistAntes.find(
-      (e) => e.cancionId === entrada.cancionId && e.orden === entrada.orden,
-    );
-    if (anterior && anterior.cantanteId !== entrada.cantanteId && entrada.cantanteId) {
-      asignaciones.push(entrada);
+    const antesExiste = event.data.before.exists;
+    if (!antesExiste) {
+      if ((despues.setlist || []).length === 0) return;
+      if (await dentroDelLimite(`${equipoId}_setlist_${actividadId}`)) return;
+      const tokens = await tokensDelEquipo(equipoId);
+      await notificar(tokens, {
+        title: "📋 Nuevo setlist",
+        body: `Se armó el setlist de "${despues.nombre}"`,
+      });
+      return;
     }
-  }
-  for (const entrada of asignaciones) {
-    const miembro = await db.collection("miembros").doc(entrada.cantanteId).get();
-    const token = miembro.data()?.fcmToken;
-    if (!token) continue;
-    const cancion = await db.collection("canciones").doc(entrada.cancionId).get();
-    const titulo = cancion.data()?.titulo ?? "una canción";
-    await notificar([token], {
-      title: "🎵 Canción asignada",
-      body: `Te asignaron "${titulo}" en "${despues.nombre}"`,
-    });
-  }
 
-  // Además de reasignaciones puntuales, ¿cambió qué canciones tiene o en
-  // qué orden? Eso sí es aviso para todo el equipo.
-  const firmaAntes = JSON.stringify(setlistAntes.map((e) => [e.cancionId, e.orden]));
-  const firmaDespues = JSON.stringify(setlistDespues.map((e) => [e.cancionId, e.orden]));
-  if (firmaAntes !== firmaDespues) {
-    if (await dentroDelLimite(`setlist_${event.params.actividadId}`)) return;
-    const tokens = await tokensDelEquipo({});
-    await notificar(tokens, {
-      title: "📋 Setlist actualizado",
-      body: `Se actualizó el setlist de "${despues.nombre}"`,
-    });
-  }
-});
+    const antes = event.data.before.data();
+    const setlistAntes = antes.setlist || [];
+    const setlistDespues = despues.setlist || [];
+
+    // Misma canción+orden con otro cantante = reasignación puntual, se avisa
+    // solo a quien queda asignado ahora (no a todo el equipo).
+    const asignaciones = [];
+    for (const entrada of setlistDespues) {
+      const anterior = setlistAntes.find(
+        (e) => e.cancionId === entrada.cancionId && e.orden === entrada.orden,
+      );
+      if (anterior && anterior.cantanteId !== entrada.cantanteId && entrada.cantanteId) {
+        asignaciones.push(entrada);
+      }
+    }
+    const miembrosRef = db.collection("equipos").doc(equipoId).collection("miembros");
+    const cancionesRef = db.collection("equipos").doc(equipoId).collection("canciones");
+    for (const entrada of asignaciones) {
+      const miembro = await miembrosRef.doc(entrada.cantanteId).get();
+      const token = miembro.data()?.fcmToken;
+      if (!token) continue;
+      const cancion = await cancionesRef.doc(entrada.cancionId).get();
+      const titulo = cancion.data()?.titulo ?? "una canción";
+      await notificar([token], {
+        title: "🎵 Canción asignada",
+        body: `Te asignaron "${titulo}" en "${despues.nombre}"`,
+      });
+    }
+
+    // Además de reasignaciones puntuales, ¿cambió qué canciones tiene o en
+    // qué orden? Eso sí es aviso para todo el equipo.
+    const firmaAntes = JSON.stringify(setlistAntes.map((e) => [e.cancionId, e.orden]));
+    const firmaDespues = JSON.stringify(setlistDespues.map((e) => [e.cancionId, e.orden]));
+    if (firmaAntes !== firmaDespues) {
+      if (await dentroDelLimite(`${equipoId}_setlist_${actividadId}`)) return;
+      const tokens = await tokensDelEquipo(equipoId);
+      await notificar(tokens, {
+        title: "📋 Setlist actualizado",
+        body: `Se actualizó el setlist de "${despues.nombre}"`,
+      });
+    }
+  },
+);
 
 /**
  * `Miembro.uid` pasa de null a tener valor cuando alguien "reclama" su
- * perfil invitado (Selección de rol) — recién ahí es una persona real
- * usando la app, así que se avisa al resto del equipo. No se le avisa a
- * quien se acaba de unir: todavía no tenía token FCM guardado antes de
- * este mismo evento, no hay a quién mandarle nada.
+ * perfil invitado (crear equipo / unirse con código) — recién ahí es una
+ * persona real usando la app, así que se avisa al resto del equipo. No
+ * se le avisa a quien se acaba de unir: todavía no tenía token FCM
+ * guardado antes de este mismo evento, no hay a quién mandarle nada.
  */
-exports.onMiembroSeUnioAlEquipo = onDocumentUpdated("miembros/{miembroId}", async (event) => {
-  const antes = event.data.before.data();
-  const despues = event.data.after.data();
-  if (antes.uid || !despues.uid) return;
+exports.onMiembroSeUnioAlEquipo = onDocumentUpdated(
+  "equipos/{equipoId}/miembros/{miembroId}",
+  async (event) => {
+    const antes = event.data.before.data();
+    const despues = event.data.after.data();
+    if (antes.uid || !despues.uid) return;
+    const { equipoId, miembroId } = event.params;
 
-  const tokens = await tokensDelEquipo({ excluirId: event.params.miembroId });
-  await notificar(tokens, {
-    title: "👋 Nuevo integrante",
-    body: `${despues.nombre} se unió al equipo`,
-  });
-});
+    const tokens = await tokensDelEquipo(equipoId, { excluirId: miembroId });
+    await notificar(tokens, {
+      title: "👋 Nuevo integrante",
+      body: `${despues.nombre} se unió al equipo`,
+    });
+  },
+);
 
 /**
- * Corre cada 15 minutos y avisa las actividades que empiezan dentro de
- * la próxima hora. La ventana (50-70 min) es más ancha que el intervalo
- * del scheduler para no perderse ninguna por el redondeo de la corrida;
- * `recordatoriosEnviados` evita mandar el mismo aviso dos veces si dos
- * corridas la agarran dentro de la ventana.
+ * Corre cada 15 minutos y avisa las actividades de CUALQUIER equipo que
+ * empiezan dentro de la próxima hora — `collectionGroup` busca en todas
+ * las subcolecciones `actividades`, sin importar de qué equipo sean. La
+ * ventana (50-70 min) es más ancha que el intervalo del scheduler para
+ * no perderse ninguna por el redondeo de la corrida; `recordatoriosEnviados`
+ * (clave `equipoId_actividadId`) evita mandar el mismo aviso dos veces si
+ * dos corridas la agarran dentro de la ventana.
  */
 exports.recordatorioAntesDelServicio = onSchedule("every 15 minutes", async () => {
   const ahora = Date.now();
@@ -175,24 +197,26 @@ exports.recordatorioAntesDelServicio = onSchedule("every 15 minutes", async () =
   const hasta = admin.firestore.Timestamp.fromMillis(ahora + 70 * 60 * 1000);
 
   const snapshot = await db
-    .collection("actividades")
+    .collectionGroup("actividades")
     .where("fecha", ">=", desde)
     .where("fecha", "<=", hasta)
     .get();
 
   for (const doc of snapshot.docs) {
-    const yaEnviado = await db.collection("recordatoriosEnviados").doc(doc.id).get();
+    const equipoId = doc.ref.parent.parent.id;
+    const clave = `${equipoId}_${doc.id}`;
+    const yaEnviado = await db.collection("recordatoriosEnviados").doc(clave).get();
     if (yaEnviado.exists) continue;
 
     const actividad = doc.data();
-    const tokens = await tokensDelEquipo({});
+    const tokens = await tokensDelEquipo(equipoId);
     await notificar(tokens, {
       title: "⏰ Recordatorio",
       body: `"${actividad.nombre}" empieza pronto`,
     });
     await db
       .collection("recordatoriosEnviados")
-      .doc(doc.id)
+      .doc(clave)
       .set({ enviadoEn: admin.firestore.FieldValue.serverTimestamp() });
   }
 });

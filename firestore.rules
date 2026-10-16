@@ -1,71 +1,88 @@
 rules_version = '2';
 
-// Todo el equipo comparte una sola base (un proyecto de Firebase = una
-// iglesia, ver README) — por eso cualquiera que esté logueado puede leer
-// todo el contenido compartido (repertorio, setlists, equipo). Antes
-// "allow read: if true" dejaba leer toda la base a cualquiera en
-// internet, sin cuenta ni la app instalada — la configuración de
-// Firebase va embebida en el APK, no es secreta, así que hacía falta
-// esto antes de distribuir la app en público.
+// Cada equipo tiene su propia base aislada (`equipos/{equipoId}/...` como
+// subcolecciones) — antes de esto había una sola base compartida por
+// cualquier cuenta que se creara en la app, sin importar si de verdad
+// eran del mismo grupo. Ver `ElegirEquipoScreen` (crear equipo nuevo /
+// unirse con código) y `ResolverEquipoScreen` (arma los repositorios ya
+// apuntando al equipo correcto).
 //
-// Importante: las reglas de Firestore se combinan con OR entre todos los
-// bloques `match` que apliquen a una ruta — un bloque específico NO
-// puede volverse más estricto que uno genérico que también matchee esa
-// misma ruta. Por eso acá no hay un comodín de escritura para
-// `{document=**}` como con la lectura: cada colección tiene su propio
-// bloque, para que la regla de `miembros` (más abajo) sea la única que
-// decide qué se puede escribir ahí.
+// `usuarioEquipo/{uid}` es la pieza clave que hace esto posible con
+// reglas de seguridad de verdad: como está indexado por uid (no por un
+// id autogenerado), una regla puede resolver "a qué equipo pertenece
+// quien pide esto" con una lectura puntual (`get`), sin necesitar una
+// query — las reglas de Firestore no permiten queries.
 //
-// No hay más reglas finas por rol (ej. "solo el líder puede borrar una
-// canción") porque `Miembro.id` (el documento) no es el mismo valor que
-// `Miembro.uid` (quién inició sesión) — una regla no puede buscar "el
-// Miembro de este uid" sin una query, y las reglas de seguridad no
-// pueden hacer queries, solo lecturas puntuales por id. Mientras ese
-// modelo no cambie, el control de quién puede hacer qué sigue viviendo
-// en la UI (ver EnVivoScreen.esLider, EquipoScreen.editable), no acá.
+// Importante (ya nos pasó una vez): las reglas se combinan con OR entre
+// todos los bloques `match` que apliquen a una misma ruta — un bloque
+// específico no puede ser más estricto que uno genérico que también
+// matchee ahí. Por eso cada subcolección tiene su propio bloque en vez
+// de un comodín que las cubra todas.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
+    function equipoDeUsuario() {
+      return get(/databases/$(database)/documents/usuarioEquipo/$(request.auth.uid)).data.equipoId;
+    }
+
+    // El directorio de equipos en sí — nombre y código, nada sensible.
+    // Cualquiera logueado puede leerlo (hace falta para validar un
+    // código al unirse) y crear uno nuevo; no se edita ni se borra por
+    // ahora.
+    match /equipos/{equipoId} {
       allow read: if request.auth != null;
-    }
-
-    match /ritmos/{id} {
-      allow write: if request.auth != null;
-    }
-    match /artistas/{id} {
-      allow write: if request.auth != null;
-    }
-    match /canciones/{id} {
-      allow write: if request.auth != null;
-    }
-    match /actividades/{id} {
-      allow write: if request.auth != null;
-    }
-    match /notas/{id} {
-      allow write: if request.auth != null;
-    }
-    match /ejercicios/{id} {
-      allow write: if request.auth != null;
-    }
-
-    // `miembros` necesita su propia regla porque "reclamar" un perfil
-    // (Selección de rol) escribe el campo `uid` con un `set()` completo,
-    // sin pasar por ningún chequeo de identidad — confía en que cada
-    // quien elige su propio nombre de una lista. Sin esto, cualquier
-    // cuenta nueva podría pisarle el `uid` a un integrante YA reclamado,
-    // robándole la identidad — incluido el líder. Acá se sigue
-    // permitiendo cambiar roles/nombre/etc. de otra persona (lo sigue
-    // necesitando "Mi equipo" para que el líder administre al resto —
-    // ver nota de arriba sobre por qué eso no se puede restringir solo
-    // al líder), pero el campo `uid` en sí únicamente se puede fijar al
-    // propio, y solo si el perfil todavía no tenía dueño.
-    match /miembros/{miembroId} {
       allow create: if request.auth != null;
-      allow update: if request.auth != null && (
-        request.resource.data.uid == resource.data.uid ||
-        (resource.data.uid == null && request.resource.data.uid == request.auth.uid)
-      );
-      allow delete: if false;
+      allow update, delete: if false;
+
+      match /ritmos/{id} {
+        allow read, write: if request.auth != null && equipoDeUsuario() == equipoId;
+      }
+      match /artistas/{id} {
+        allow read, write: if request.auth != null && equipoDeUsuario() == equipoId;
+      }
+      match /canciones/{id} {
+        allow read, write: if request.auth != null && equipoDeUsuario() == equipoId;
+      }
+      match /actividades/{id} {
+        allow read, write: if request.auth != null && equipoDeUsuario() == equipoId;
+      }
+      match /notas/{id} {
+        allow read, write: if request.auth != null && equipoDeUsuario() == equipoId;
+      }
+      match /ejercicios/{id} {
+        allow read, write: if request.auth != null && equipoDeUsuario() == equipoId;
+      }
+
+      // `miembros` necesita su propia regla, más allá del resto: crear o
+      // reclamar un perfil pasa ANTES de que exista `usuarioEquipo/{uid}`
+      // (es parte del mismo paso de unirse/crear equipo), así que
+      // `equipoDeUsuario()` todavía no resuelve nada en ese momento —
+      // por eso el "o" en `create`. El resto (leer, cambiar roles de
+      // otra persona) ya exige pertenecer al equipo como siempre.
+      //
+      // Y la misma protección contra robo de identidad que ya existía:
+      // el campo `uid` de un perfil ya reclamado no se puede pisar con
+      // otro — solo se puede fijar una vez, al reclamarlo.
+      match /miembros/{miembroId} {
+        allow read: if request.auth != null && equipoDeUsuario() == equipoId;
+        allow create: if request.auth != null && (
+          equipoDeUsuario() == equipoId ||
+          request.resource.data.uid == request.auth.uid
+        );
+        allow update: if request.auth != null && equipoDeUsuario() == equipoId && (
+          request.resource.data.uid == resource.data.uid ||
+          (resource.data.uid == null && request.resource.data.uid == request.auth.uid)
+        );
+        allow delete: if false;
+      }
+    }
+
+    // A qué equipo pertenece cada cuenta — ver la función de arriba. Se
+    // escribe una sola vez (al crear o unirse a un equipo) y nunca se
+    // reasigna desde acá.
+    match /usuarioEquipo/{uid} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update, delete: if false;
     }
   }
 }

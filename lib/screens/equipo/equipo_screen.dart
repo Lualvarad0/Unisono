@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:provider/provider.dart';
 
 import 'package:app_alabanzas/core/firestore/repositorio.dart';
+import 'package:app_alabanzas/models/equipo.dart';
 import 'package:app_alabanzas/models/miembro.dart';
 import 'package:app_alabanzas/repositories/miembro_repository.dart';
 import 'package:app_alabanzas/screens/equipo/invitar_miembro_screen.dart';
@@ -50,26 +52,79 @@ class EquipoScreen extends StatelessWidget {
               }
               final integrantes = [...snapshot.data!]
                 ..sort((a, b) => a.nombre.compareTo(b.nombre));
-              if (integrantes.isEmpty) {
-                return const Center(child: Text('Todavía no hay integrantes.'));
-              }
-              return ListView.separated(
+              return ListView(
                 padding: const EdgeInsets.all(16),
-                itemCount: integrantes.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, i) {
-                  final miembro = integrantes[i];
-                  return _TarjetaMiembro(
-                    miembro: miembro,
-                    esVos: miembro.uid == uid,
-                    editable: esLider,
-                  );
-                },
+                children: [
+                  const _TarjetaCodigo(),
+                  const SizedBox(height: 16),
+                  if (integrantes.isEmpty)
+                    const Center(child: Text('Todavía no hay integrantes.'))
+                  else
+                    for (final miembro in integrantes)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _TarjetaMiembro(
+                          miembro: miembro,
+                          esVos: miembro.uid == uid,
+                          editable: esLider,
+                        ),
+                      ),
+                ],
               );
             },
           ),
         );
       },
+    );
+  }
+}
+
+/// El código de 6 caracteres para que alguien nuevo se una a este mismo
+/// equipo (ver `ElegirEquipoScreen`, "Unirme con un código") — visible
+/// para cualquiera, no solo el líder: cualquiera del equipo puede
+/// invitar, no hace falta pedirle el código justo a quien lo armó.
+class _TarjetaCodigo extends StatelessWidget {
+  const _TarjetaCodigo();
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    final codigo = context.watch<Equipo>().codigo;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'CÓDIGO DEL EQUIPO',
+                    style: tema.textTheme.labelSmall
+                        ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    codigo,
+                    style: tema.textTheme.headlineSmall?.copyWith(letterSpacing: 4),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.copy_outlined),
+              tooltip: 'Copiar código',
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: codigo));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Código copiado')),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

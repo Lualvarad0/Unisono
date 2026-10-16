@@ -1,18 +1,15 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:app_alabanzas/core/firestore/equipo_collections.dart';
 import 'package:app_alabanzas/core/firestore/firestore_repository.dart';
 import 'package:app_alabanzas/models/cancion.dart';
 
-/// Acceso a la colección `canciones`.
+/// Acceso a la subcolección `equipos/{equipoId}/canciones`.
 class CancionRepository extends FirestoreRepository<Cancion> {
-  CancionRepository()
+  CancionRepository({required String equipoId})
       : super(
-          FirebaseFirestore.instance
-              .collection('canciones')
-              .withConverter<Cancion>(
-                fromFirestore: Cancion.converter.fromFirestore,
-                toFirestore: Cancion.converter.toFirestore,
-              ),
+          coleccionDeEquipo(equipoId, 'canciones').withConverter<Cancion>(
+            fromFirestore: Cancion.converter.fromFirestore,
+            toFirestore: Cancion.converter.toFirestore,
+          ),
         );
 
   /// Canciones de un ritmo específico — la jerarquía de navegación del

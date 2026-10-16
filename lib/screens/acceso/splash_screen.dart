@@ -4,14 +4,15 @@ import 'package:provider/provider.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
 import 'package:app_alabanzas/screens/acceso/crear_cuenta_screen.dart';
 import 'package:app_alabanzas/screens/acceso/login_screen.dart';
-import 'package:app_alabanzas/screens/acceso/seleccion_rol_screen.dart';
+import 'package:app_alabanzas/screens/acceso/resolver_equipo_screen.dart';
 import 'package:app_alabanzas/widgets/logo_unisono.dart';
 
 /// Splash + Bienvenida (pantallas 1/4d del prototipo) en una sola: mientras
 /// `AutenticacionService.estadoDeSesion` resuelve si hay sesión activa,
 /// esto es lo primero que ve cualquiera al abrir la app. Sin sesión ->
-/// Bienvenida con Login/Crear cuenta. Con sesión -> Selección de rol, que
-/// decide sola si hace falta preguntar algo o si ya se puede pasar.
+/// Bienvenida con Login/Crear cuenta. Con sesión -> `ResolverEquipoScreen`,
+/// que decide sola si hace falta crear/unirse a un equipo o si ya se
+/// puede pasar directo.
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
@@ -25,7 +26,7 @@ class SplashScreen extends StatelessWidget {
           return const _Cargando();
         }
         if (snapshot.data != null) {
-          return const SeleccionRolScreen();
+          return const ResolverEquipoScreen();
         }
         return const _Bienvenida();
       },

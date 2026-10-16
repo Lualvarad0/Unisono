@@ -1,18 +1,15 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:app_alabanzas/core/firestore/equipo_collections.dart';
 import 'package:app_alabanzas/core/firestore/firestore_repository.dart';
 import 'package:app_alabanzas/models/actividad.dart';
 
-/// Acceso a la colección `actividades`.
+/// Acceso a la subcolección `equipos/{equipoId}/actividades`.
 class ActividadRepository extends FirestoreRepository<Actividad> {
-  ActividadRepository()
+  ActividadRepository({required String equipoId})
       : super(
-          FirebaseFirestore.instance
-              .collection('actividades')
-              .withConverter<Actividad>(
-                fromFirestore: Actividad.converter.fromFirestore,
-                toFirestore: Actividad.converter.toFirestore,
-              ),
+          coleccionDeEquipo(equipoId, 'actividades').withConverter<Actividad>(
+            fromFirestore: Actividad.converter.fromFirestore,
+            toFirestore: Actividad.converter.toFirestore,
+          ),
         );
 
   /// Para el calendario de actividades (Paso 6): más reciente primero.

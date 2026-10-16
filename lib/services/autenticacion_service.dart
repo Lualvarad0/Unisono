@@ -49,10 +49,16 @@ class AutenticacionService {
     }
   }
 
+  /// A propósito NO avisa si el correo no tiene cuenta (`user-not-found`):
+  /// quien pide "Olvidé mi contraseña" ve el mismo resultado exista o no
+  /// esa cuenta. Si no, cualquiera podría usar este formulario para
+  /// probar una lista de correos y descubrir cuáles están registrados en
+  /// la app — ni falta usar la contraseña real de nadie para esa fuga.
   Future<void> recuperarContrasena({required String email}) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
     } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') return;
       throw AutenticacionExcepcion(_mensaje(e.code));
     }
   }

@@ -2,31 +2,16 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:app_alabanzas/core/firestore/repositorio.dart';
 import 'package:app_alabanzas/core/theme/app_theme.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
 import 'package:app_alabanzas/services/firestore_service.dart';
 import 'package:app_alabanzas/services/conectividad_service.dart';
 import 'package:app_alabanzas/services/foto_perfil_service.dart';
-import 'package:app_alabanzas/services/invite_link_service.dart';
-import 'package:app_alabanzas/services/notificaciones_service.dart';
 import 'package:app_alabanzas/services/preferencias_service.dart';
 import 'package:app_alabanzas/services/sync_local/conexion_local_service.dart';
 import 'package:app_alabanzas/screens/acceso/splash_screen.dart';
-import 'package:app_alabanzas/models/actividad.dart';
-import 'package:app_alabanzas/models/miembro.dart';
-import 'package:app_alabanzas/repositories/actividad_repository.dart';
-import 'package:app_alabanzas/repositories/miembro_repository.dart';
-import 'package:app_alabanzas/models/artista.dart';
-import 'package:app_alabanzas/models/cancion.dart';
-import 'package:app_alabanzas/models/ritmo.dart';
-import 'package:app_alabanzas/repositories/artista_repository.dart';
-import 'package:app_alabanzas/repositories/cancion_repository.dart';
-import 'package:app_alabanzas/repositories/ritmo_repository.dart';
-import 'package:app_alabanzas/models/nota.dart';
-import 'package:app_alabanzas/repositories/nota_repository.dart';
-import 'package:app_alabanzas/models/ejercicio.dart';
-import 'package:app_alabanzas/repositories/ejercicio_repository.dart';
+import 'package:app_alabanzas/repositories/equipo_repository.dart';
+import 'package:app_alabanzas/repositories/usuario_equipo_repository.dart';
 // Generado por `flutterfire configure` — ver README, sección "Configurar
 // Firebase". No se comitea (está en .gitignore): cada iglesia usa su
 // propio proyecto Firebase gratuito.
@@ -79,21 +64,13 @@ class _AppAlabanzasState extends State<AppAlabanzas> {
   }
 }
 
-/// La app real, una vez que Firebase ya está listo. Registra los
-/// repositorios de la Capa 1 (Contenido) y el servicio de Acceso como
-/// providers globales: cualquier pantalla, sin importar a qué capa
-/// pertenezca, puede leerlos con `context.read<Repositorio<X>>()` /
-/// `context.read<AutenticacionService>()`.
-///
-/// Se registran contra la interfaz `Repositorio<T>`, no contra la clase
-/// concreta (`RitmoRepository`, etc.): así ninguna pantalla queda atada a
-/// "esto es Firestore" — el día que haga falta otra implementación
-/// (memoria para tests, caché local) se cambia acá, en un solo lugar, sin
-/// tocar pantallas. Ver el doc de `Repositorio` para más detalle.
-///
-/// Se resuelven acá arriba, y no en `screens/`, porque varias pantallas
-/// futuras cruzan capas — por ejemplo, armar un setlist necesita elegir
-/// canciones.
+/// La app real, una vez que Firebase ya está listo. Acá solo se registran
+/// los providers de CUENTA (Acceso, preferencias, servicios que no
+/// dependen de a qué equipo pertenece quien inició sesión) — los
+/// repositorios de contenido (repertorio, setlists, integrantes, notas,
+/// ejercicios) son por equipo, no globales, así que se arman recién en
+/// `ResolverEquipoScreen` una vez que se sabe cuál es ese equipo. Ver el
+/// doc de esa pantalla para la razón completa.
 class _AppConProviders extends StatelessWidget {
   const _AppConProviders({required this.preferencias});
 
@@ -104,47 +81,12 @@ class _AppConProviders extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<AutenticacionService>(create: (_) => AutenticacionService()),
-        ChangeNotifierProvider<InviteLinkService>(
-          create: (_) => InviteLinkService()..iniciar(),
-        ),
         ChangeNotifierProvider<PreferenciasService>.value(value: preferencias),
         Provider<FotoPerfilService>(create: (_) => FotoPerfilService()),
         Provider<ConectividadService>(create: (_) => ConectividadService()),
         Provider<ConexionLocalService>(create: (_) => ConexionLocalService()),
-        Provider<Repositorio<Ritmo>>(create: (_) => RitmoRepository()),
-        Provider<Repositorio<Artista>>(create: (_) => ArtistaRepository()),
-        // CancionRepository y MiembroRepository suman métodos que no son
-        // parte del CRUD genérico (watchByRitmo, buscarPorUid): se
-        // registran también por su tipo concreto para que una pantalla
-        // que los necesite los pida con `context.read<XRepository>()`,
-        // sin crear una segunda instancia (la de abajo reutiliza esta).
-        Provider<CancionRepository>(create: (_) => CancionRepository()),
-        Provider<Repositorio<Cancion>>(
-          create: (context) => context.read<CancionRepository>(),
-        ),
-        Provider<MiembroRepository>(create: (_) => MiembroRepository()),
-        Provider<Repositorio<Miembro>>(
-          create: (context) => context.read<MiembroRepository>(),
-        ),
-        Provider<NotificacionesService>(
-          create: (context) => NotificacionesService(context.read<MiembroRepository>()),
-        ),
-        // ActividadRepository suma watchOrdenadasPorFecha, que no es parte
-        // del CRUD genérico — mismo patrón que CancionRepository arriba.
-        Provider<ActividadRepository>(create: (_) => ActividadRepository()),
-        Provider<Repositorio<Actividad>>(
-          create: (context) => context.read<ActividadRepository>(),
-        ),
-        Provider<NotaRepository>(create: (_) => NotaRepository()),
-        Provider<Repositorio<Nota>>(
-          create: (context) => context.read<NotaRepository>(),
-        ),
-        // EjercicioRepository suma marcarCompletado, que no es parte del
-        // CRUD genérico — mismo patrón que CancionRepository arriba.
-        Provider<EjercicioRepository>(create: (_) => EjercicioRepository()),
-        Provider<Repositorio<Ejercicio>>(
-          create: (context) => context.read<EjercicioRepository>(),
-        ),
+        Provider<EquipoRepository>(create: (_) => EquipoRepository()),
+        Provider<UsuarioEquipoRepository>(create: (_) => UsuarioEquipoRepository()),
       ],
       child: Consumer<PreferenciasService>(
         builder: (context, preferencias, _) => MaterialApp(

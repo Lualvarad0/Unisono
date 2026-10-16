@@ -1,18 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:app_alabanzas/core/firestore/equipo_collections.dart';
 import 'package:app_alabanzas/core/firestore/firestore_repository.dart';
 import 'package:app_alabanzas/models/ejercicio.dart';
 
-/// Acceso a la colección `ejercicios`.
+/// Acceso a la subcolección `equipos/{equipoId}/ejercicios`.
 class EjercicioRepository extends FirestoreRepository<Ejercicio> {
-  EjercicioRepository()
+  EjercicioRepository({required String equipoId})
       : super(
-          FirebaseFirestore.instance
-              .collection('ejercicios')
-              .withConverter<Ejercicio>(
-                fromFirestore: Ejercicio.converter.fromFirestore,
-                toFirestore: Ejercicio.converter.toFirestore,
-              ),
+          coleccionDeEquipo(equipoId, 'ejercicios').withConverter<Ejercicio>(
+            fromFirestore: Ejercicio.converter.fromFirestore,
+            toFirestore: Ejercicio.converter.toFirestore,
+          ),
         );
 
   /// Marca (o desmarca) a `uid` como que ya practicó este ejercicio. Usa

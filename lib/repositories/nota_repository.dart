@@ -1,16 +1,15 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:app_alabanzas/core/firestore/equipo_collections.dart';
 import 'package:app_alabanzas/core/firestore/firestore_repository.dart';
 import 'package:app_alabanzas/models/nota.dart';
 
-/// Acceso a la colección `notas`.
+/// Acceso a la subcolección `equipos/{equipoId}/notas`.
 class NotaRepository extends FirestoreRepository<Nota> {
-  NotaRepository()
+  NotaRepository({required String equipoId})
       : super(
-          FirebaseFirestore.instance.collection('notas').withConverter<Nota>(
-                fromFirestore: Nota.converter.fromFirestore,
-                toFirestore: Nota.converter.toFirestore,
-              ),
+          coleccionDeEquipo(equipoId, 'notas').withConverter<Nota>(
+            fromFirestore: Nota.converter.fromFirestore,
+            toFirestore: Nota.converter.toFirestore,
+          ),
         );
 
   /// Todas las notas visibles para `uid`: las suyas propias (personales o
