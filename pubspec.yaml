@@ -51,10 +51,6 @@ dependencies:
   # Android 12+: BLUETOOTH_SCAN/ADVERTISE/CONNECT).
   permission_handler: ^11.3.1
 
-  # Captura el enlace de invitación (App Link) cuando el líder invita a
-  # alguien — ver InviteLinkService y AndroidManifest.xml.
-  app_links: ^7.2.1
-
   # Preferencia de apariencia (tema, tamaño de letra, mostrar acordes) —
   # ver AparienciaScreen. Es local al celular a propósito, no vive en
   # Firestore: es una preferencia de lectura, no un dato del equipo.

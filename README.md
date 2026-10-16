@@ -1,283 +1,169 @@
-# App Alabanzas
+# Unísono
 
-App offline-first para grupos de alabanza: letras y acordes sincronizados
-en tiempo real entre los celulares del equipo, con o sin internet en el
-local.
+App offline-first para equipos de alabanza: letra, acordes y tonalidades
+sincronizados entre todos los celulares del equipo, con o sin internet.
+Cada equipo tiene su propio espacio aislado — se crea uno nuevo o te unís
+a uno existente con un código de 6 caracteres, sin mezclarte con el
+repertorio de otro grupo.
 
-## Cómo funciona (dos capas)
+**Landing / descarga**: [app-alabanzas.web.app](https://app-alabanzas.web.app)
 
-- **Capa 1 — Contenido**: antes del servicio, con wifi o datos, cada
-  celular descarga su copia local del repertorio (ritmos, artistas,
-  canciones) y de las actividades (setlists). Usa Firestore, que ya trae
-  caché offline nativa. Es el código de `models/`, `repositories/` y
-  `services/firestore_service.dart` relacionado con Firestore.
-- **Capa 2 — Estado en vivo** (todo lo agrupado bajo `sync_local/` dentro
-  de `services/`, `screens/` y `widgets/`): durante el servicio, sin
-  internet, el celular del líder transmite por red local (Nearby
-  Connections en Android / Multipeer Connectivity en iOS) qué canción y
-  qué sección están sonando. Los demás celulares —que ya tienen el
-  contenido descargado por la Capa 1— avanzan solos a esa misma parte.
+## Documentación
 
-## Estado del proyecto
+- **[docs/API.md](docs/API.md)** — modelo de datos en Firestore, Cloud
+  Functions, y cómo la app accede a todo eso.
+- **[docs/SEGURIDAD.md](docs/SEGURIDAD.md)** — reglas de Firestore/Storage,
+  aislamiento entre equipos, manejo de secretos, qué queda afuera de
+  alcance.
+- **[docs/ESTILO_DE_CODIGO.md](docs/ESTILO_DE_CODIGO.md)** —
+  convenciones del código: idioma, estructura, cómo se comenta, cómo se
+  manejan errores y formularios.
 
-- [x] Paso 1 — Estructura base del proyecto Flutter
-- [x] Paso 2 — Modelos Dart + integración Firestore (offline-first)
-- [x] Paso 3 — Parser/renderer de ChordPro (secciones + transposición)
-- [x] Paso 4 — Prototipo aislado de la Capa 2 (Nearby Connections) —
-      código listo y validado en Android (compila, corre, permisos OK);
-      **falta la prueba real en dos celulares** (ver sección Paso 4)
-- [ ] Paso 5 — Vista Músico y Vista Cantante
-- [ ] Paso 6 — Calendario de actividades + armado de setlist
+## Qué hace
 
-## Estructura de carpetas
+- **Repertorio con letra y acordes** en formato ChordPro, con transporte
+  de tono instantáneo (ver [Cargar tu propio repertorio](#cargar-tu-propio-repertorio-chordpro)).
+- **Equipos con código de invitación** — crear uno nuevo te deja como
+  líder; unirte con un código te suma como integrante.
+- **Setlists** por actividad (servicio/ensayo), con cantante y tono
+  asignado por canción.
+- **Modo en vivo**: el líder transmite qué canción/sección está sonando;
+  el resto del equipo la ve sincronizada — por Firestore cuando hay
+  internet, o por red local (Bluetooth/Wi-Fi) cuando no la hay (ver
+  [Sincronización en vivo P2P](#sincronización-en-vivo-p2p-prototipo)).
+- **Notificaciones push** cuando se arma/actualiza un setlist, cuando
+  empieza el modo en vivo, cuando alguien se une al equipo, y recordatorio
+  antes de que empiece una actividad.
+- **Notas y ejercicios** de equipo, atados o no a una canción puntual.
+- **Funciona sin internet** para todo lo ya sincronizado antes — gracias
+  a la caché offline nativa de Firestore.
 
-El proyecto es **layer-first**: cada carpeta bajo `lib/` es una capa
-técnica (`models/`, `repositories/`, `services/`, `screens/`, `widgets/`),
-no un dominio del negocio — el equivalente Dart a un proyecto Java/Spring
-organizado en `model/`, `repository/`, `service/`, `controller/`. Dentro
-de cada capa, los archivos se agrupan en una subcarpeta por dominio
-(`chordpro/`, `sync_local/`, `acceso/`...) solo cuando hay más de un
-archivo relacionado — así una capa con muchos archivos sigue siendo
-navegable sin volver a mezclar capas distintas.
+## Arquitectura (resumen)
+
+`lib/` es **layer-first**: cada carpeta es una capa técnica, no un
+dominio de negocio — el equivalente Dart a un backend organizado en
+`model/repository/service/controller`.
 
 ```
 lib/
-  main.dart                     # bootstrap: Firebase + Firestore + runApp
-  app.dart                      # MaterialApp, tema, providers globales (el "composition root")
-  main_prototipo_sync_local.dart  # entry point SEPARADO del prototipo (Paso 4)
+  main.dart            # bootstrap: Firebase + runApp
+  app.dart              # MaterialApp, tema, providers de nivel cuenta
   core/
-    firestore/                   # helpers compartidos por TODOS los repositorios
-      repositorio.dart            # contrato Repositorio<T>: contra esto programa el resto de la app
-      model_converter.dart        # fromMap/toMap -> withConverter, sin repetir boilerplate
-      firestore_repository.dart   # implementación con Firestore de Repositorio<T>
-    theme/
-      app_theme.dart              # tipografía grande / alto contraste, pensado para atril
-  models/                        # los "datos" — equivalente a entity/ en Java
-    ritmo.dart, artista.dart, cancion.dart      # Capa 1: repertorio
-    miembro.dart, actividad.dart, setlist_entry.dart  # Capa 1: calendario y setlists
-    nota.dart                                   # notas del equipo
-    chordpro/
-      chordpro_modelo.dart        # CancionChordPro/SeccionChordPro/LineaChordPro (+ toChordPro)
-  repositories/                  # acceso a datos — interfaz en core/, implementación acá
-    ritmo_repository.dart, artista_repository.dart, cancion_repository.dart
-    miembro_repository.dart, actividad_repository.dart
-    nota_repository.dart
-  services/                      # lógica de negocio pura, sin widgets
-    autenticacion_service.dart    # login/registro/roles (Firebase Auth)
-    firestore_service.dart        # Capa 1: configura la caché offline persistente
-    chordpro/                     # parser + transposición de ChordPro (Paso 3), sin UI ni Firestore
-      acorde.dart                  # Acorde: parseo (cifrado americano o español) + transposición
-      chordpro_parser.dart         # ChordProParser.parse: texto crudo -> CancionChordPro
-      editor_simple.dart           # conversión letra+acordes <-> ChordPro para el editor simple
-    sync_local/                   # Capa 2: sincronización P2P en vivo (Paso 4)
-      permisos_sync_local.dart     # pide Bluetooth/ubicación en runtime
-      prototipo_conexion_service.dart  # wrapper delgado sobre NearbyService
-  screens/                       # pantallas — cada widget cumple el rol de controller + view
-    acceso/                        # login, registro, selección de rol
-    contenido/                     # home, repertorio, agregar/editar/detalle de alabanza
-    notas/                         # agregar y ver notas del equipo
-    sync_local/                    # prototipo_lider_screen, prototipo_seguidor_screen (Paso 4)
-  widgets/                       # piezas de UI reutilizables entre pantallas
-    linea_chordpro_widget.dart     # una línea de letra+acordes ya renderizada
-    sync_local/lista_dispositivos.dart
-packages/
-  flutter_nearby_connections_plus/  # copia local parcheada — ver Paso 4
+    firestore/           # Repositorio<T>, FirestoreRepository<T>, coleccionDeEquipo()
+    theme/                # AppTheme — tipografía y colores de toda la app
+  models/               # datos inmutables (Equipo, Miembro, Cancion, Actividad...)
+  repositories/          # un Repositorio<T> por modelo
+  services/              # lógica de negocio sin widgets
+    chordpro/              # parser + transposición, sin UI ni Firestore
+    sync_local/             # transporte P2P en vivo (prototipo, ver abajo)
+  screens/               # una pantalla = controller + view
+    acceso/                 # login, crear cuenta, elegir/crear equipo
+    contenido/               # home, repertorio, editor de canciones
+    actividades/, equipo/, notas/, ejercicios/, en_vivo/, perfil/
+  widgets/               # piezas de UI reutilizables entre pantallas
+functions/              # Cloud Functions (Node) — notificaciones push
+docs/                   # esta documentación
 ```
 
-### Por qué esta forma y no otra
-
-- **Layer-first en vez de feature-first**: se eligió así para que la
-  estructura resulte familiar viniendo de un backend Java/C#/Node
-  organizado en capas (`model/service/repository/controller`). El costo
-  conocido de este enfoque es que capas con muchas pantallas (`screens/`)
-  pueden crecer bastante — por eso cada capa se subdivide en una carpeta
-  por dominio (`screens/contenido/`, `services/chordpro/`) en vez de tirar
-  todo suelto.
-- **`services/sync_local/` y `firestore_service.dart` no comparten nada**
-  aunque los dos se llamen "sync": uno persiste en Firestore con internet
-  ocasional, el otro es transporte P2P efímero sin internet. Es la
-  separación más importante de todo el proyecto (es la razón de ser de la
-  app), así que sigue existiendo como subcarpeta propia aunque ya no sea
-  un feature de nivel superior.
-- **`Repositorio<T>` es una interfaz abstracta; `FirestoreRepository<T>`
-  (en `core/firestore/`) es su única implementación** — y es la que se usa
-  hoy, pero ninguna pantalla, provider ni test programa contra ella
-  directamente (`app.dart` registra los providers como `Repositorio<Ritmo>`,
-  no `RitmoRepository`). Es la pieza que hace que la arquitectura aguante
-  cambios sin reescribir: el día que haga falta un repositorio en memoria
-  para tests de widgets, o una capa de caché antes de escribir a Firestore,
-  se agrega una clase nueva que implementa `Repositorio<T>` — no se toca
-  ni una pantalla. Los modelos inmutables con `copyWith`
-  (`cancion.copyWith(...)`, `acorde.transponer(...)`) siguen la misma idea
-  a nivel de datos: nunca se edita un objeto existente, siempre se deriva
-  uno nuevo.
-- **`core/firestore/` en vez de repetir el boilerplate de
-  `withConverter` en cada modelo**: los modelos (Ritmo, Artista, Canción,
-  Miembro, Actividad, Nota) necesitan exactamente las mismas cinco
-  operaciones CRUD contra Firestore. `ModelConverter` y
-  `FirestoreRepository<T>` existen para que agregar un modelo nuevo sea
-  "escribir el modelo + una clase de 8 líneas", no repetir 40 líneas de
-  Firestore.
-- **`SetlistEntry` embebido en `Actividad`, no en su propia
-  subcolección**: un setlist siempre se lee/escribe completo (armarlo,
-  reordenarlo), nunca una canción del setlist por separado. Embeberlo
-  como array evita una lectura extra y es más simple de mantener
-  consistente offline.
-- **`services/chordpro/` separado de `models/chordpro/`**: el parser de
-  ChordPro no sabe nada de Firestore ni de widgets — solo convierte texto
-  en un árbol de secciones/acordes (definido en `models/chordpro/`) y sabe
-  transportarse. Vive en `services/` para que se pueda testear con
-  `flutter test` sin Firebase inicializado, y para que cualquier pantalla
-  lo use como cualquier librería, sin acoplarse a cómo se persiste la
-  canción.
-- **Los imports internos son absolutos (`package:app_alabanzas/...`),
-  no relativos (`../../../..`)** — es lo más parecido en Dart a los
-  imports totalmente calificados de Java (`import com.app.model.User;`):
-  el path no cambia si movés el archivo que importa, y se lee de un
-  vistazo desde qué capa viene cada dependencia.
-
-### Pendiente de ubicar (Pasos 5-6)
-
-Dos decisiones de diseño que todavía no se implementaron, para que no se
-pierdan:
-
-- **Vista Músico / Vista Cantante** (Paso 5): son widgets que consumen
-  `Cancion` ya transportada al tono del día — van en `screens/contenido/`
-  aunque el estado que consuman (sección activa, tono en vivo) venga de
-  `services/sync_local/`.
-- **Vista Líder** (Paso 6): además de letra/acordes, tiene los controles
-  para avanzar sección/canción, cambiar tono en vivo, y ver el estado de
-  conexión de los demás dispositivos. Va a vivir junto al calendario de
-  actividades (`screens/`, dominio "actividades" — todavía sin crear) y no
-  en `sync_local`, porque su punto de partida conceptual es "elegir y
-  controlar la Actividad de hoy", no el transporte P2P en sí mismo.
+Ver [docs/API.md](docs/API.md) para el modelo de datos completo y
+[docs/ESTILO_DE_CODIGO.md](docs/ESTILO_DE_CODIGO.md) para el porqué de
+cada decisión (`Repositorio<T>` como interfaz, modelos inmutables,
+imports absolutos, etc.).
 
 ## Requisitos
 
-Todo lo de esta lista **ya está instalado en esta máquina**:
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) 3.47.2+.
+- Android toolchain (Android Studio o solo el SDK command-line) para
+  compilar/correr en Android — sin esto se puede escribir código y
+  correr `flutter analyze`/`flutter test`, pero no instalar en un
+  celular/emulador.
+- [Firebase CLI](https://firebase.google.com/docs/cli) (`npm i -g firebase-tools`)
+  y [FlutterFire CLI](https://firebase.flutter.dev/docs/cli/)
+  (`dart pub global activate flutterfire_cli`).
+- [Node.js 24](https://nodejs.org/) si vas a tocar las Cloud Functions
+  de `functions/`.
+- Una cuenta de Google para crear tu propio proyecto de Firebase (es
+  gratis en el plan Spark para un equipo chico).
 
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) 3.47.2,
-  clonado en `C:\src\flutter`, en el PATH del usuario. `flutter doctor`
-  corre limpio salvo el Android toolchain (ver abajo).
-- Las carpetas nativas `android/` e `ios/` ya están generadas
-  (`flutter create --platforms=android,ios --org com.appalabanzas .`).
-  `com.appalabanzas` es un org genérico de placeholder — si tu iglesia
-  tiene dominio propio, es un find-replace en `android/app/build.gradle.kts`,
-  `ios/Runner.xcodeproj` y el `bundle_id`/`package_name` del lado de
-  Firebase antes de publicar.
-- [Firebase CLI](https://firebase.google.com/docs/cli) (`firebase-tools`,
-  vía npm) y [FlutterFire CLI](https://firebase.flutter.dev/docs/cli/)
-  (`dart pub global activate flutterfire_cli`), ambos en el PATH.
-- **Android toolchain**: NO instalado todavía. Sin esto no se puede
-  compilar/correr en Android real ni emulador, pero sí se puede escribir
-  código, correr `flutter analyze`, y correr la app en web
-  (`flutter run -d chrome`) — Firebase/Firestore soportan Android, iOS y
-  Web, pero no tienen implementación oficial para Windows desktop, así
-  que `flutter run -d windows` no sirve para probar esta parte. Instalar
-  después con `winget install --id Google.AndroidStudio` si hace falta.
+## Levantar el proyecto
 
-Si abrís una terminal nueva y algún comando no se reconoce, cerrá esa
-terminal y abrí una de nuevo — los cambios de PATH no llegan a terminales
-ya abiertas.
+```bash
+git clone https://github.com/Lualvarad0/Unisono.git
+cd Unisono
+flutter pub get
+```
 
-## Conectar Firebase (Firestore)
+Esto **no alcanza para correr la app todavía** — faltan los archivos de
+configuración de Firebase, que son específicos de cada proyecto y por
+eso están en `.gitignore` (ver [docs/SEGURIDAD.md](docs/SEGURIDAD.md#manejo-de-secretos)).
 
-> **En esta instancia ya está hecho.** Proyecto `app-alabanzas`
-> (`southamerica-west1`), Firestore Standard creado, reglas publicadas,
-> apps Android e iOS registradas, `lib/firebase_options.dart` generado.
-> `flutter analyze` corre sin errores. Esta sección queda como guía para
-> otra iglesia que clone el repo y necesite conectar su propio proyecto.
-
-Esta parte no la puedo hacer yo: implica iniciar sesión con tu cuenta de
-Google y crear un proyecto en la nube a tu nombre. Corré estos pasos vos,
-**en una terminal nueva**, parado en la carpeta del proyecto.
-
-**1. Iniciar sesión en Firebase** (abre el navegador, iniciá sesión con la
-cuenta de Google que va a ser dueña del proyecto — puede ser una cuenta
-del equipo, no tiene que ser personal):
+### 1. Crear y conectar tu proyecto de Firebase
 
 ```bash
 firebase login
-```
-
-**2. Crear el proyecto de Firebase.** El id tiene que ser único a nivel
-mundial, minúsculas, 6-30 caracteres — ajustá `app-alabanzas-tuiglesia` si
-ya está tomado:
-
-```bash
-firebase projects:create app-alabanzas-tuiglesia --display-name "App Alabanzas"
-```
-
-**3. Conectar el proyecto de Firebase a este código Flutter.** Esto
-genera `lib/firebase_options.dart` (gitignored, es el que faltaba) y
-registra automáticamente la app Android (`com.appalabanzas.app_alabanzas`)
-y la app iOS en Firebase:
-
-```bash
+firebase projects:create unisono-tuequipo --display-name "Unísono"
 flutterfire configure
 ```
 
-Te va a preguntar interactivamente:
-- **Select a Firebase project**: elegí el que creaste en el paso 2.
-- **Which platforms should your configuration support?**: marcá `android`
-  e `ios` con la barra espaciadora, `web` si también vas a probar en
-  Chrome, y Enter.
+`flutterfire configure` genera `lib/firebase_options.dart` y registra
+automáticamente la app Android (`com.appalabanzas.app_alabanzas` —
+cambialo en `android/app/build.gradle.kts` si querés tu propio id) e iOS
+en Firebase. Te va a preguntar qué plataformas soportar — marcá al menos
+`android`.
 
-**4. Habilitar Cloud Firestore.** Todavía no hay forma confiable de
-hacerlo por CLI sin elegir región a mano, así que es el único paso por
-consola web:
+### 2. Habilitar Firestore y Authentication
 
-1. Andá a [console.firebase.google.com](https://console.firebase.google.com/),
-   entrá al proyecto que creaste.
-2. Menú lateral → **Firestore Database** → **Crear base de datos**.
-3. Modo: **Producción** (no "modo de prueba" — las reglas de abajo ya
-   cubren ese caso).
-4. Región: la más cercana a tu iglesia — **no se puede cambiar después**
-   sin recrear la base de datos.
+Por consola, no hay forma confiable de hacerlo por CLI eligiendo región:
 
-**5. Reglas de seguridad.** El proyecto todavía no tiene Firebase Auth
-implementado (`Miembro` guarda nombre/roles, pero no hay login todavía),
-así que no hay forma de restringir por usuario. Estas reglas son un punto
-intermedio razonable para un equipo chico y confiable: cualquiera con el
-link/proyecto puede leer, pero solo puede escribir si trae un token válido
-de Firebase (cosa que, sin Auth, hoy nadie tiene) — o sea, de arranque,
-**nadie externo puede escribir, y el equipo tampoco todavía**. Pegalas en
-Firestore Database → Reglas:
+1. [console.firebase.google.com](https://console.firebase.google.com/) →
+   tu proyecto → **Firestore Database** → **Crear base de datos** →
+   modo **Producción** → elegí la región más cercana (no se puede
+   cambiar después).
+2. **Authentication** → **Comenzar** → habilitá el proveedor
+   **Correo electrónico/contraseña**.
 
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-  }
-}
-```
-
-> ⚠️ Esto es temporal. Antes de usar la app en un servicio real hay que
-> agregar Firebase Auth (aunque sea anónimo, para los 5 dispositivos del
-> equipo) y reglas que validen ese usuario — si no, nadie va a poder
-> guardar canciones/actividades desde la app. Quedó anotado como pendiente
-> del roadmap.
-
-**6. Confirmar que quedó conectado:**
+### 3. Publicar las reglas de seguridad y las Cloud Functions
 
 ```bash
-flutter pub get
-flutter analyze
-flutter run -d chrome
+firebase deploy --only firestore:rules,storage,functions
 ```
 
-`flutter analyze` tiene que dar "No issues found" (ya lo probé sin
-`firebase_options.dart` con un stub descartable, y el resto del código
-compila limpio). Si `flutter run -d chrome` levanta la app y no tira
-errores de Firebase en la consola, quedó conectado.
+Esto publica `firestore.rules` y `storage.rules` tal como están en el
+repo (documentados en [docs/SEGURIDAD.md](docs/SEGURIDAD.md)) y las 4
+Cloud Functions de notificaciones (`functions/index.js`, documentadas en
+[docs/API.md](docs/API.md#cloud-functions)). Sin este paso la app igual
+funciona, pero nadie puede leer ni escribir nada (las reglas por defecto
+de un proyecto nuevo lo bloquean todo) y no van a llegar notificaciones.
 
-Después de correr `flutter create` y `flutterfire configure`, revisá
-`git status`/`git diff` antes de comitear — son los dos pasos que tocan
-archivos generados automáticamente y conviene mirar qué cambió.
+### 4. Correr la app
+
+```bash
+flutter analyze   # tiene que dar "No issues found"
+flutter test
+flutter run       # con un emulador/celular Android conectado
+```
+
+La primera cuenta que crees va a pasar por "¿Cómo arrancamos?" para
+crear su propio equipo — a partir de ahí, cualquiera con el código de
+ese equipo se puede sumar.
+
+## Compilar y publicar un release firmado
+
+Dos workflows de GitHub Actions ya configurados en `.github/workflows/`:
+
+- **`build-debug-apk.yml`**: corre en cada push a `main`, compila un APK
+  debug (firmado con una clave efímera, solo para probar) y lo deja
+  como artifact descargable desde la pestaña Actions.
+- **`release-apk.yml`**: se dispara con un tag `v*` (ej. `v1.0.0`) o a
+  mano, compila un APK **release** firmado con el keystore real, y lo
+  publica como GitHub Release — es el que se linkea desde la landing.
+
+Para que `release-apk.yml` funcione en tu propio fork hacen falta estos
+Secrets del repositorio (`Settings → Secrets and variables → Actions`):
+`FIREBASE_OPTIONS_PARA_SECRET`, `GOOGLE_SERVICES_JSON`,
+`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
+`ANDROID_KEY_ALIAS` — ver [docs/SEGURIDAD.md](docs/SEGURIDAD.md#manejo-de-secretos)
+para qué es cada uno y cómo generarlos.
 
 ## Cargar tu propio repertorio (ChordPro)
 
@@ -309,119 +195,59 @@ Directivas de sección reconocidas (forma larga o corta, da igual):
 La etiqueta (el texto después de `:`) es lo que se muestra en pantalla —
 por eso "Intro" se escribe como `{start_of_verse: Intro}`, no como una
 directiva propia: sigue siendo una sección tipo `verso` para el parser,
-pero se etiqueta distinto en la UI. Si no ponés etiqueta (`{start_of_chorus}`
-a secas), usa una por defecto ("Coro", "Verso", "Puente", "Tag").
+pero se etiqueta distinto en la UI. Sin etiqueta, usa una por defecto
+("Coro", "Verso", "Puente", "Tag").
 
-Cualquier otra directiva del archivo (`{title: ...}`, `{key: ...}`,
-`{comment: ...}`, líneas que empiezan con `#`) se ignora al parsear — esos
-datos ya viven en los campos propios de `Cancion` (`titulo`,
-`tonoOriginal`), así que un archivo `.cho` real, tal cual lo exportó otro
-programa, se puede pegar en `contenidoChordPro` sin editarlo a mano.
+Cualquier otra directiva (`{title: ...}`, `{key: ...}`, `{comment: ...}`,
+líneas que empiezan con `#`) se ignora al parsear — esos datos ya viven
+en los campos propios de `Cancion`, así que un archivo `.cho` real, tal
+cual lo exportó otro programa, se puede pegar sin editarlo a mano. Ver
+[docs/API.md § ChordPro](docs/API.md#chordpro) para el uso programático
+del parser.
 
-El parser vive en
-[lib/services/chordpro/](lib/services/chordpro/)
-y no depende de Firestore ni de Flutter UI — es una librería Dart pura,
-así que la usan tanto la futura Vista Músico/Cantante (Paso 5) como
-cualquier test. Uso típico, con el offset del día que ya trae
-`SetlistEntry.tonoAsignado`:
+## Sincronización en vivo P2P (prototipo)
 
-```dart
-final cancionParseada = ChordProParser.parse(cancion.contenidoChordPro);
-final transportada = cancionParseada.transponer(setlistEntry.tonoAsignado);
+Además del modo en vivo por Firestore (necesita internet), hay un
+prototipo aislado de sincronización **sin internet** usando Nearby
+Connections (`services/sync_local/`, pantallas en `screens/sync_local/`)
+— dos pantallas mínimas (líder que transmite, seguidor que recibe), con
+entry point propio (`lib/main_prototipo_sync_local.dart`) separado del
+resto de la app.
 
-for (final seccion in transportada.secciones) {
-  print(seccion.etiqueta); // "Verso 1", "Coro", ...
-  for (final linea in seccion.lineas) {
-    print(linea.soloLetra);  // Vista Cantante: solo letra
-    print(linea.toChordPro()); // Vista Músico: letra + acordes ya transportados
-  }
-}
-```
+### ⚠️ No funciona en emulador — y todavía no se probó en dos celulares reales
 
-La transposición es matemática (círculo de semitonos), no busca/reemplaza
-texto — y respeta si el original usaba sostenidos o bemoles (`Bb` + 2
-semitonos da `C`, no `B##`).
-
-## Paso 4 — Prototipo de sincronización en vivo (Nearby Connections)
-
-Prototipo aislado de la Capa 2, tal como lo pedía el roadmap original: dos
-pantallas mínimas (líder que transmite un contador, seguidor que lo
-recibe) usando `flutter_nearby_connections_plus`, **separadas del resto de
-la app** — no usan Firebase, no usan Provider, no tocan `lib/main.dart`.
-
-### ⚠️ No funciona en emulador
-
-Nearby Connections necesita radios de Bluetooth/Wi-Fi Direct reales — la
-propia documentación del paquete dice "Android doesn't support emulator,
-only real devices". Lo que sí se validó en el emulador: que la app
-instala, arranca, pide los permisos correctos (ubicación + "Nearby
-devices") y llega a "Anunciando este celular como líder..." sin crashear.
-**Falta la prueba real: conectar dos celulares Android y confirmar que un
-valor viaja de uno a otro en vivo.**
-
-### Cómo probarlo
+Nearby Connections necesita radios de Bluetooth/Wi-Fi Direct reales
+("Android doesn't support emulator, only real devices", según el propio
+paquete). Lo que sí está validado: la app instala, pide los permisos
+correctos y llega a "Anunciando este celular como líder..." sin
+crashear. **Falta la prueba real: conectar dos celulares Android y
+confirmar que un valor viaja de uno a otro en vivo.**
 
 ```bash
 flutter run -t lib/main_prototipo_sync_local.dart -d <id-del-celular-1>
 flutter run -t lib/main_prototipo_sync_local.dart -d <id-del-celular-2>
 ```
 
-En un celular tocá **"Soy el líder"**, en el otro **"Soy el seguidor"**.
-Aceptá los permisos de ubicación y "Nearby devices" en ambos. En la
-pantalla del seguidor debería aparecer el líder en "Dispositivos
-cercanos" — tocá **"Conectar"**. Una vez conectado, el botón **"+1
-(transmitir)"** del líder (o el switch de auto-incremento) tiene que
-actualizar el número grande en la pantalla del seguidor, sin internet.
+En un celular tocá "Soy el líder", en el otro "Soy el seguidor", aceptá
+los permisos de ubicación y "Nearby devices" en ambos, y conectá desde
+"Dispositivos cercanos". El paquete publicado en pub.dev tenía dos
+problemas de compilación contra herramientas actuales (`jcenter()`
+descontinuado, y una API de registro de plugins eliminada hace años) —
+la solución es [`packages/flutter_nearby_connections_plus/`](packages/flutter_nearby_connections_plus/),
+una copia local parcheada (`dependency_overrides` en `pubspec.yaml`
+apunta ahí), excluida del lint porque no es código propio.
 
-### Dos problemas reales que aparecieron al compilar (y cómo se resolvieron)
+## Pendientes conocidos
 
-El paquete publicado en pub.dev no compilaba tal cual contra las
-herramientas actuales — nada de esto es específico de esta app, cualquiera
-que lo use hoy se choca con lo mismo:
-
-1. **`android/build.gradle` usaba `jcenter()`**, el repositorio que Google
-   cerró en 2022, y un Android Gradle Plugin de 2019 declarado en un
-   `buildscript` propio que pisa la versión que ya resuelve el proyecto
-   raíz. Sin arreglo: `Could not find method jcenter()`.
-2. **El código Kotlin usaba `PluginRegistry.Registrar`**, la API de
-   registro de plugins de Flutter *v1 embedding* (pre-2019), eliminada del
-   engine hace años. Sin arreglo: `Unresolved reference 'Registrar'`. Era
-   código muerto de todos modos — el plugin ya se registra por la vía
-   moderna (`FlutterPlugin`/`ActivityAware`), así que se borró sin perder
-   funcionalidad.
-
-**La solución**: [packages/flutter_nearby_connections_plus/](packages/flutter_nearby_connections_plus/)
-es una copia local del paquete (`dependency_overrides` en `pubspec.yaml`
-apunta ahí) con *solo* esos dos archivos parcheados — el resto del
-paquete (Dart, la lógica Kotlin real) queda intacta. Se puede sacar el
-override el día que el paquete original se actualice en pub.dev; mientras
-tanto, `analysis_options.yaml` excluye `packages/**` porque no es código
-nuestro.
-
-Advertencia pendiente (no bloquea el build, pero Flutter avisa que en el
-futuro sí lo hará): el plugin aplica su propio Kotlin Gradle Plugin en vez
-de usar el "Built-in Kotlin" que Flutter recomienda desde hace poco. Si en
-algún momento deja de compilar por esto, es la próxima pieza a parchear en
-el mismo `build.gradle`.
-
-### Permisos
-
-Android exige, además de declararlos en el manifest (ya está en
-`android/app/src/main/AndroidManifest.xml` y en el propio manifest del
-plugin), pedirlos en tiempo de ejecución — eso lo hace
-[permisos_sync_local.dart](lib/services/sync_local/permisos_sync_local.dart)
-antes de iniciar el servicio: ubicación (`locationWhenInUse`) y los tres
-permisos granulares de Bluetooth de Android 12+ (`bluetoothScan`,
-`bluetoothAdvertise`, `bluetoothConnect`). En iOS, `Info.plist` ya declara
-`NSBonjourServices`, `NSLocalNetworkUsageDescription` y
-`NSBluetoothAlwaysUsageDescription` — falta probarlo en un iPhone real
-(necesita Mac + Xcode, ver sección Despliegue).
+- Probar el modo en vivo P2P (arriba) en dos celulares Android reales.
+- Probar el flujo completo en iOS (compilado, pero nunca corrido en un
+  iPhone real — necesita Mac + Xcode).
+- `Ejercicio.completadoPorUids` deja que cualquier integrante marque el
+  ejercicio de otro como hecho/no hecho (ver [docs/SEGURIDAD.md](docs/SEGURIDAD.md#afuera-de-alcance)).
+- Sin verificación de correo electrónico ni Firebase App Check.
 
 ## Licencia
 
 [MIT](LICENSE) — se eligió sobre GPLv3 porque no restringe cómo cada
-iglesia distribuye su fork (algunas comunidades prefieren no publicar sus
-cambios), y facilita que el proyecto se use como base de apps privadas sin
-fricción legal. Si tu comunidad prefiere GPLv3 (para forzar que las
-mejoras vuelvan siempre como código abierto), es un cambio de un solo
-archivo — avisá y lo actualizamos.
+equipo distribuye su fork, y facilita usar el proyecto como base de apps
+privadas sin fricción legal.
