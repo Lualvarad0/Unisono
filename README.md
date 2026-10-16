@@ -1,4 +1,18 @@
+<div align="center">
+
+<img src="assets/icon/icon.png" width="96" height="96" alt="Unísono" />
+
 # Unísono
+
+**Tu repertorio. Tu equipo. Siempre sincronizados.**
+
+[![Licencia MIT](https://img.shields.io/badge/licencia-MIT-2F6FED?style=flat-square)](LICENSE)
+[![Flutter](https://img.shields.io/badge/Flutter-3.47%2B-2F6FED?style=flat-square&logo=flutter&logoColor=white)](https://docs.flutter.dev/get-started/install)
+[![Plataforma](https://img.shields.io/badge/plataforma-Android-2F6FED?style=flat-square&logo=android&logoColor=white)](#descargar)
+[![Backend](https://img.shields.io/badge/backend-Firebase-2F6FED?style=flat-square&logo=firebase&logoColor=white)](docs/API.md)
+[![Última versión](https://img.shields.io/github/v/release/Lualvarad0/Unisono?style=flat-square&color=2F6FED&label=%C3%BAltima%20versi%C3%B3n)](https://github.com/Lualvarad0/Unisono/releases/latest)
+
+</div>
 
 App offline-first para equipos de alabanza: letra, acordes y tonalidades
 sincronizados entre todos los celulares del equipo, con o sin internet.
@@ -6,20 +20,20 @@ Cada equipo tiene su propio espacio aislado — se crea uno nuevo o te unís
 a uno existente con un código de 6 caracteres, sin mezclarte con el
 repertorio de otro grupo.
 
-**Landing / descarga**: [app-alabanzas.web.app](https://app-alabanzas.web.app)
+### 📲 Descargar
 
-## Documentación
+**[app-alabanzas.web.app](https://app-alabanzas.web.app)** — landing con
+el instalador para Android (último release firmado, código abierto).
 
-- **[docs/API.md](docs/API.md)** — modelo de datos en Firestore, Cloud
-  Functions, y cómo la app accede a todo eso.
-- **[docs/SEGURIDAD.md](docs/SEGURIDAD.md)** — reglas de Firestore/Storage,
-  aislamiento entre equipos, manejo de secretos, qué queda afuera de
-  alcance.
-- **[docs/ESTILO_DE_CODIGO.md](docs/ESTILO_DE_CODIGO.md)** —
-  convenciones del código: idioma, estructura, cómo se comenta, cómo se
-  manejan errores y formularios.
+## 📚 Documentación
 
-## Qué hace
+| Guía | Qué encontrás ahí |
+|---|---|
+| **[docs/API.md](docs/API.md)** | Modelo de datos en Firestore, Cloud Functions, y cómo la app accede a todo eso. |
+| **[docs/SEGURIDAD.md](docs/SEGURIDAD.md)** | Reglas de Firestore/Storage, aislamiento entre equipos, manejo de secretos. |
+| **[docs/ESTILO_DE_CODIGO.md](docs/ESTILO_DE_CODIGO.md)** | Convenciones del código: idioma, estructura, cómo se comenta. |
+
+## ✨ Qué hace
 
 - **Repertorio con letra y acordes** en formato ChordPro, con transporte
   de tono instantáneo (ver [Cargar tu propio repertorio](#cargar-tu-propio-repertorio-chordpro)).
@@ -38,7 +52,7 @@ repertorio de otro grupo.
 - **Funciona sin internet** para todo lo ya sincronizado antes — gracias
   a la caché offline nativa de Firestore.
 
-## Arquitectura (resumen)
+## 🏗️ Arquitectura (resumen)
 
 `lib/` es **layer-first**: cada carpeta es una capa técnica, no un
 dominio de negocio — el equivalente Dart a un backend organizado en
@@ -70,7 +84,7 @@ Ver [docs/API.md](docs/API.md) para el modelo de datos completo y
 cada decisión (`Repositorio<T>` como interfaz, modelos inmutables,
 imports absolutos, etc.).
 
-## Requisitos
+## 🧰 Requisitos
 
 - [Flutter SDK](https://docs.flutter.dev/get-started/install) 3.47.2+.
 - Android toolchain (Android Studio o solo el SDK command-line) para
@@ -85,7 +99,7 @@ imports absolutos, etc.).
 - Una cuenta de Google para crear tu propio proyecto de Firebase (es
   gratis en el plan Spark para un equipo chico).
 
-## Levantar el proyecto
+## 🚀 Levantar el proyecto
 
 ```bash
 git clone https://github.com/Lualvarad0/Unisono.git
@@ -93,9 +107,12 @@ cd Unisono
 flutter pub get
 ```
 
-Esto **no alcanza para correr la app todavía** — faltan los archivos de
-configuración de Firebase, que son específicos de cada proyecto y por
-eso están en `.gitignore` (ver [docs/SEGURIDAD.md](docs/SEGURIDAD.md#manejo-de-secretos)).
+> [!IMPORTANT]
+> Esto **no alcanza para correr la app todavía** — faltan los archivos
+> de configuración de Firebase, que son específicos de cada proyecto y
+> por eso están en `.gitignore` (ver
+> [docs/SEGURIDAD.md](docs/SEGURIDAD.md#manejo-de-secretos)). Seguí los
+> 4 pasos de abajo.
 
 ### 1. Crear y conectar tu proyecto de Firebase
 
@@ -147,7 +164,7 @@ La primera cuenta que crees va a pasar por "¿Cómo arrancamos?" para
 crear su propio equipo — a partir de ahí, cualquiera con el código de
 ese equipo se puede sumar.
 
-## Compilar y publicar un release firmado
+## 📦 Compilar y publicar un release firmado
 
 Dos workflows de GitHub Actions ya configurados en `.github/workflows/`:
 
@@ -165,7 +182,7 @@ Secrets del repositorio (`Settings → Secrets and variables → Actions`):
 `ANDROID_KEY_ALIAS` — ver [docs/SEGURIDAD.md](docs/SEGURIDAD.md#manejo-de-secretos)
 para qué es cada uno y cómo generarlos.
 
-## Cargar tu propio repertorio (ChordPro)
+## 🎵 Cargar tu propio repertorio (ChordPro)
 
 Las canciones se guardan en `Cancion.contenidoChordPro` en formato
 [ChordPro](https://www.chordpro.org/chordpro/chordpro-file-format-specification/):
@@ -205,7 +222,7 @@ cual lo exportó otro programa, se puede pegar sin editarlo a mano. Ver
 [docs/API.md § ChordPro](docs/API.md#chordpro) para el uso programático
 del parser.
 
-## Sincronización en vivo P2P (prototipo)
+## 📡 Sincronización en vivo P2P (prototipo)
 
 Además del modo en vivo por Firestore (necesita internet), hay un
 prototipo aislado de sincronización **sin internet** usando Nearby
@@ -214,14 +231,14 @@ Connections (`services/sync_local/`, pantallas en `screens/sync_local/`)
 entry point propio (`lib/main_prototipo_sync_local.dart`) separado del
 resto de la app.
 
-### ⚠️ No funciona en emulador — y todavía no se probó en dos celulares reales
-
-Nearby Connections necesita radios de Bluetooth/Wi-Fi Direct reales
-("Android doesn't support emulator, only real devices", según el propio
-paquete). Lo que sí está validado: la app instala, pide los permisos
-correctos y llega a "Anunciando este celular como líder..." sin
-crashear. **Falta la prueba real: conectar dos celulares Android y
-confirmar que un valor viaja de uno a otro en vivo.**
+> [!WARNING]
+> **No funciona en emulador — y todavía no se probó en dos celulares reales.**
+> Nearby Connections necesita radios de Bluetooth/Wi-Fi Direct reales
+> ("Android doesn't support emulator, only real devices", según el
+> propio paquete). Lo que sí está validado: la app instala, pide los
+> permisos correctos y llega a "Anunciando este celular como líder..."
+> sin crashear. **Falta la prueba real: conectar dos celulares Android
+> y confirmar que un valor viaja de uno a otro en vivo.**
 
 ```bash
 flutter run -t lib/main_prototipo_sync_local.dart -d <id-del-celular-1>
@@ -237,7 +254,7 @@ la solución es [`packages/flutter_nearby_connections_plus/`](packages/flutter_n
 una copia local parcheada (`dependency_overrides` en `pubspec.yaml`
 apunta ahí), excluida del lint porque no es código propio.
 
-## Pendientes conocidos
+## 🧭 Pendientes conocidos
 
 - Probar el modo en vivo P2P (arriba) en dos celulares Android reales.
 - Probar el flujo completo en iOS (compilado, pero nunca corrido en un
@@ -246,8 +263,14 @@ apunta ahí), excluida del lint porque no es código propio.
   ejercicio de otro como hecho/no hecho (ver [docs/SEGURIDAD.md](docs/SEGURIDAD.md#afuera-de-alcance)).
 - Sin verificación de correo electrónico ni Firebase App Check.
 
-## Licencia
+## ⚖️ Licencia
 
 [MIT](LICENSE) — se eligió sobre GPLv3 porque no restringe cómo cada
 equipo distribuye su fork, y facilita usar el proyecto como base de apps
 privadas sin fricción legal.
+
+<div align="center">
+
+<sub>Desarrollado por <a href="https://www.alvarado-dev.com/">Cornerstone Develop</a></sub>
+
+</div>

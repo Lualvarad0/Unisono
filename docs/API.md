@@ -1,4 +1,4 @@
-# Guía de datos y backend
+# 🗄️ Guía de datos y backend
 
 Unísono no tiene una API HTTP propia: el cliente Flutter habla directo
 con Firebase (Firestore, Auth, Storage, Cloud Messaging) a través de los
@@ -43,7 +43,7 @@ Para unirse, alguien nuevo usa el código de 6 caracteres del equipo (sin
 `O`/`0`/`I`/`1`/`L`, para que no se confundan al dictarlo por voz o
 WhatsApp) — ver `EquipoRepository.generarCodigoUnico`.
 
-## Modelo de datos
+## 🗂️ Modelo de datos
 
 | Colección | Campos | Notas |
 |---|---|---|
@@ -98,7 +98,10 @@ equipo pertenece la cuenta) — antes de eso, al arrancar la app, solo
 existen los providers a nivel de cuenta (`AutenticacionService`,
 `EquipoRepository`, `UsuarioEquipoRepository`, ver `app.dart`).
 
-### Agregar un modelo nuevo
+### 🧩 Agregar un modelo nuevo
+
+> [!TIP]
+> Mismos cuatro pasos para cualquier colección nueva de contenido.
 
 1. Clase en `models/`, con `fromMap`/`toMap` y un `ModelConverter`
    estático (ver `model_converter.dart`) — copiá cualquiera de los
@@ -135,7 +138,7 @@ que una escritura repetida dispare el mismo aviso varias veces seguidas.
 (`rateLimitsAvisos/{clave}`) para que un mismo aviso no se repita dentro
 de una ventana de 2 minutos, sin importar cuántas escrituras lo disparen.
 
-## Autenticación
+## 🔑 Autenticación
 
 `AutenticacionService` ([`lib/services/autenticacion_service.dart`](../lib/services/autenticacion_service.dart))
 envuelve Firebase Auth (correo + contraseña): `iniciarSesion`,
@@ -149,7 +152,7 @@ decidir a dónde mandar a cada quien: sin sesión → `LoginScreen`; con
 sesión → `ResolverEquipoScreen`, que busca `usuarioEquipo/{uid}` y
 muestra `ElegirEquipoScreen` si todavía no existe.
 
-## Notificaciones push
+## 🔔 Notificaciones push
 
 `NotificacionesService` ([`lib/services/notificaciones_service.dart`](../lib/services/notificaciones_service.dart))
 hace solo la parte del celular — quien manda los avisos de verdad son

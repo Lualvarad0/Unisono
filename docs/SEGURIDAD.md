@@ -1,9 +1,17 @@
-# Guía de seguridad
+# 🔐 Guía de seguridad
 
 Qué protege la app, cómo, y qué queda explícitamente afuera por ahora.
 Ver también [API.md](API.md) para el modelo de datos completo.
 
-## Autenticación
+| Capa | Qué la protege |
+|---|---|
+| Cuentas | Firebase Auth + contraseña fuerte + sin enumeración de usuarios |
+| Entre equipos | `usuarioEquipo/{uid}` + `equipoDeUsuario()` en `firestore.rules` |
+| Fotos de perfil | `storage.rules`, un archivo por uid |
+| Avisos push | Rate limit de 2 min por Cloud Function |
+| Config/claves | Nunca comiteadas — reconstruidas en CI desde Secrets |
+
+## 🔑 Autenticación
 
 Firebase Auth, correo + contraseña. Dos reglas del lado del cliente que
 no impone Firebase por sí solo (`lib/screens/acceso/crear_cuenta_screen.dart`):
@@ -27,7 +35,7 @@ sintácticamente válida sirve para crear cuenta) ni Firebase App Check.
 Quedan como mejoras futuras, no bloqueantes para el uso actual (equipos
 chicos y de confianza).
 
-## Aislamiento entre equipos (multi-tenancy)
+## 🏘️ Aislamiento entre equipos (multi-tenancy)
 
 Cada equipo de alabanza es un compartimento separado — ver
 [API.md § Multi-tenancy](API.md#multi-tenancy-equipos) para el modelo de
@@ -48,9 +56,12 @@ otro equipo, hace falta además pertenecer a ese equipo puntual.
 
 ### La lección de las reglas OR (importante, ya nos pasó dos veces)
 
-**Firestore combina las reglas con OR entre todos los bloques `match`
-que apliquen a una misma ruta** — un bloque específico y restrictivo NO
-puede ganarle a uno genérico y permisivo que también matchee esa ruta.
+> [!IMPORTANT]
+> **Firestore combina las reglas con OR entre todos los bloques `match`
+> que apliquen a una misma ruta** — un bloque específico y restrictivo
+> NO puede ganarle a uno genérico y permisivo que también matchee esa
+> ruta.
+
 Ejemplo real de este proyecto que no funcionó como parecía:
 
 ```
@@ -93,14 +104,14 @@ allow update: if request.auth != null && equipoDeUsuario() == equipoId && (
 );
 ```
 
-## Storage (fotos de perfil)
+## 🖼️ Storage (fotos de perfil)
 
 `storage.rules`: un archivo por persona
 (`perfiles/{uid}/foto.jpg`) — cualquiera logueado puede verlas, pero solo
 el dueño de esa cuenta puede subir o reemplazar la suya
 (`request.auth.uid == uid`).
 
-## Rate limiting (Cloud Functions)
+## ⏱️ Rate limiting (Cloud Functions)
 
 Cualquier integrante autenticado puede escribir en `actividades` (lo
 necesita el líder para armar un setlist), así que nada impide que una
@@ -111,7 +122,7 @@ usa una transacción de Firestore para que un mismo aviso (misma
 minutos, sin importar cuántas escrituras lo disparen. Ver
 [API.md § Cloud Functions](API.md#cloud-functions).
 
-## Manejo de secretos
+## 🗝️ Manejo de secretos
 
 Ningún archivo de configuración de Firebase ni ninguna clave se comitea:
 
@@ -127,7 +138,7 @@ instalación nueva no puede actualizar a otra con una firma distinta. El
 APK **release** (`release-apk.yml`) usa el keystore real de arriba,
 así que las versiones sí se actualizan unas sobre otras.
 
-## Afuera de alcance
+## 🚧 Afuera de alcance
 
 - **`Ejercicio.completadoPorUids`**: cualquier integrante del equipo
   puede marcar el ejercicio de otro como hecho/no hecho (no solo el
@@ -139,9 +150,10 @@ así que las versiones sí se actualizan unas sobre otras.
 - Sin límite de intentos de login más allá del que ya impone Firebase
   Auth (`too-many-requests`).
 
-## Reportar un problema de seguridad
+## 📣 Reportar un problema de seguridad
 
-Si encontrás una falla de seguridad, abrí un issue en el repositorio
-describiéndolo — para algo sensible, contactá directo a quien mantiene
-el proyecto en vez de publicar los detalles de explotación en un issue
-público.
+> [!CAUTION]
+> Si encontrás una falla de seguridad, abrí un issue en el repositorio
+> describiéndolo — para algo sensible, contactá directo a quien
+> mantiene el proyecto en vez de publicar los detalles de explotación
+> en un issue público.
