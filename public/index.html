@@ -195,6 +195,44 @@
   .tarjeta h3 { font-size: 16px; font-weight: 700; margin: 0 0 6px; }
   .tarjeta p { font-size: 14px; line-height: 1.55; color: var(--texto-tenue); margin: 0; }
 
+  /* --- Diagrama de sincronización --- */
+  .diagrama-sync {
+    display: block;
+    width: 100%;
+    max-width: 440px;
+    margin: 0 auto 8px;
+  }
+  .diagrama-sync .linea-sync {
+    stroke: var(--azul-claro);
+    stroke-width: 2;
+    stroke-dasharray: 6 6;
+    opacity: .55;
+  }
+  .diagrama-sync .nodo { fill: var(--superficie-2); stroke: var(--borde); stroke-width: 1.5; }
+  .diagrama-sync .nodo-acento {
+    fill: var(--azul);
+    stroke: var(--azul);
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .diagrama-sync .barra { fill: #fff; }
+  .diagrama-sync .barra-tenue { fill: var(--azul-claro); }
+  .diagrama-sync .etiqueta {
+    fill: var(--texto);
+    font: 600 12px "Inter", sans-serif;
+    text-anchor: middle;
+  }
+  .diagrama-sync .etiqueta-tenue { fill: var(--texto-tenue); font-weight: 500; }
+
+  .explicacion-sync {
+    max-width: 480px;
+    margin: 20px auto 0;
+    text-align: center;
+    color: var(--texto-tenue);
+    font-size: 14.5px;
+    line-height: 1.6;
+  }
+
   /* --- Pasos de instalación --- */
   .pasos {
     display: grid;
@@ -236,6 +274,13 @@
   }
   footer p { margin: 0; font-size: 13px; color: var(--texto-tenue); }
   footer a { color: var(--texto-tenue); }
+  .footer-col { display: flex; flex-direction: column; gap: 4px; }
+  .footer-creditos a {
+    color: var(--azul-claro);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .footer-creditos a:hover { text-decoration: underline; }
 
   @media (max-width: 760px) {
     .hero { grid-template-columns: 1fr; padding: 32px 0 48px; text-align: left; }
@@ -264,6 +309,14 @@
       0%, 100% { opacity: .5; transform: translate(-50%, -50%) scale(1); }
       50% { opacity: .75; transform: translate(-50%, -50%) scale(1.12); }
     }
+    @keyframes fluir-sync { to { stroke-dashoffset: -24; } }
+    @keyframes respirar-nodo {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    .diagrama-sync .linea-sync { animation: fluir-sync 1.1s linear infinite; }
+    .diagrama-sync .nodo-acento { animation: respirar-nodo 2.2s ease-in-out infinite; }
 
     header { animation: entra-arriba .6s ease-out both; }
 
@@ -400,6 +453,64 @@
       </div>
     </section>
 
+    <section class="bloque" id="como-funciona">
+      <h2 class="titulo-seccion reveal">Pensada para sincronizar incluso sin señal</h2>
+      <p class="copete-seccion reveal">
+        El repertorio y los setlists se descargan antes del servicio con
+        wifi o datos — a partir de ahí quedan guardados en el celular.
+        "Modo en vivo" mantiene a todo el equipo viendo la misma sección
+        a medida que el líder avanza, por internet como de costumbre, y
+        con un modo punto a punto por Bluetooth/Wi-Fi local (todavía en
+        pruebas) pensado para salones sin señal.
+      </p>
+      <svg
+        class="diagrama-sync reveal"
+        viewBox="0 0 400 200"
+        role="img"
+        aria-label="El celular del líder sincroniza con los del resto del equipo para que todos vean la misma sección de la canción."
+      >
+        <line x1="200" y1="64" x2="92" y2="150" class="linea-sync"></line>
+        <line x1="200" y1="64" x2="308" y2="150" class="linea-sync"></line>
+
+        <circle cx="200" cy="40" r="32" class="nodo nodo-acento"></circle>
+        <g transform="translate(186,25)">
+          <rect x="0" y="9" width="4" height="9" rx="2" class="barra"></rect>
+          <rect x="7" y="4.5" width="4" height="18" rx="2" class="barra"></rect>
+          <rect x="14" y="0" width="4" height="27" rx="2" class="barra"></rect>
+          <rect x="21" y="4.5" width="4" height="18" rx="2" class="barra"></rect>
+          <rect x="28" y="9" width="4" height="9" rx="2" class="barra"></rect>
+        </g>
+        <text x="200" y="92" class="etiqueta">Líder, en vivo</text>
+
+        <circle cx="92" cy="126" r="28" class="nodo"></circle>
+        <g transform="translate(79.5,112)">
+          <rect x="0" y="8" width="3.5" height="8" rx="2" class="barra-tenue"></rect>
+          <rect x="6" y="4" width="3.5" height="16" rx="2" class="barra-tenue"></rect>
+          <rect x="12" y="0" width="3.5" height="24" rx="2" class="barra-tenue"></rect>
+          <rect x="18" y="4" width="3.5" height="16" rx="2" class="barra-tenue"></rect>
+          <rect x="24" y="8" width="3.5" height="8" rx="2" class="barra-tenue"></rect>
+        </g>
+        <text x="92" y="178" class="etiqueta etiqueta-tenue">Tu celular</text>
+
+        <circle cx="308" cy="126" r="28" class="nodo"></circle>
+        <g transform="translate(295.5,112)">
+          <rect x="0" y="8" width="3.5" height="8" rx="2" class="barra-tenue"></rect>
+          <rect x="6" y="4" width="3.5" height="16" rx="2" class="barra-tenue"></rect>
+          <rect x="12" y="0" width="3.5" height="24" rx="2" class="barra-tenue"></rect>
+          <rect x="18" y="4" width="3.5" height="16" rx="2" class="barra-tenue"></rect>
+          <rect x="24" y="8" width="3.5" height="8" rx="2" class="barra-tenue"></rect>
+        </g>
+        <text x="308" y="178" class="etiqueta etiqueta-tenue">El resto del equipo</text>
+      </svg>
+      <p class="explicacion-sync reveal">
+        Como el repertorio ya se descargó de antemano, sincronizar en
+        vivo es liviano: cada celular solo necesita enterarse de "en qué
+        parte vamos", no bajar nada nuevo — el camino por internet ya
+        funciona hoy; el camino 100% local (sin pasar por ningún
+        servidor) es la pieza que todavía se está terminando de probar.
+      </p>
+    </section>
+
     <section class="bloque" id="instalar">
       <h2 class="titulo-seccion reveal">Cómo instalarla</h2>
       <p class="copete-seccion reveal">
@@ -423,8 +534,14 @@
     </section>
 
     <footer>
-      <p>Unísono — hecha para equipos de alabanza.</p>
-      <p><a href="https://github.com/Lualvarad0/Unisono" target="_blank" rel="noopener">github.com/Lualvarad0/Unisono</a></p>
+      <div class="footer-col">
+        <p>Unísono — hecha para equipos de alabanza.</p>
+        <p><a href="https://github.com/Lualvarad0/Unisono" target="_blank" rel="noopener">github.com/Lualvarad0/Unisono</a></p>
+      </div>
+      <p class="footer-creditos">
+        Desarrollado por
+        <a href="https://www.alvarado-dev.com/" target="_blank" rel="noopener">Cornerstone Develop</a>
+      </p>
     </footer>
   </div>
 
