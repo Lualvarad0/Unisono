@@ -3,67 +3,370 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Unísono</title>
+<title>Unísono — Letra y acordes para tu equipo de alabanza</title>
+<meta name="description" content="La app para equipos de alabanza: letra, acordes y tonalidades sincronizados entre todos, incluso sin internet. Gratis, de código abierto.">
+<meta property="og:title" content="Unísono">
+<meta property="og:description" content="Tu repertorio. Tu equipo. Siempre sincronizados.">
+<meta property="og:image" content="/assets/icono.png">
+<link rel="icon" href="/assets/icono.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    background: #131320;
-    color: #F2F2F7;
-    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
-    height: 100%;
+  :root {
+    --azul: #2F6FED;
+    --azul-claro: #6B9BFF;
+    --fondo: #0B0B0F;
+    --superficie: #16161C;
+    --superficie-2: #1D1D25;
+    --borde: #2A2A33;
+    --texto: #F2F2F5;
+    --texto-tenue: #9A9AA5;
   }
-  .contenedor {
-    min-height: 100%;
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .envoltorio {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* --- Header --- */
+  header {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
+    padding: 20px 0;
+  }
+  .marca {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 17px;
+  }
+  .marca img { width: 30px; height: 30px; border-radius: 8px; display: block; }
+  .enlace-github {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--texto-tenue);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border: 1px solid var(--borde);
+    border-radius: 999px;
+    transition: color .15s, border-color .15s;
+  }
+  .enlace-github:hover { color: var(--texto); border-color: #3C3C47; }
+  .enlace-github svg { width: 16px; height: 16px; }
+
+  /* --- Hero --- */
+  .hero {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 48px;
+    align-items: center;
+    padding: 56px 0 80px;
+  }
+  .hero h1 {
+    font-size: clamp(32px, 4.2vw, 46px);
+    line-height: 1.12;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin: 0 0 18px;
+  }
+  .hero h1 span { color: var(--azul-claro); }
+  .hero p.subtitulo {
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--texto-tenue);
+    max-width: 440px;
+    margin: 0 0 32px;
+  }
+  .botonera { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+  .boton-descarga {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--azul);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 16px;
+    padding: 15px 24px;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px -8px rgba(47, 111, 237, 0.55);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .boton-descarga:hover { transform: translateY(-1px); box-shadow: 0 10px 28px -6px rgba(47, 111, 237, 0.65); }
+  .boton-descarga svg { width: 20px; height: 20px; flex-shrink: 0; }
+  .nota-descarga {
+    margin: 12px 0 0;
+    font-size: 13px;
+    color: var(--texto-tenue);
+  }
+  .nota-descarga strong { color: var(--texto); font-weight: 600; }
+  .requisitos {
+    margin: 20px 0 0;
+    font-size: 13px;
+    color: var(--texto-tenue);
+  }
+
+  /* --- Mockup de celular --- */
+  .telefono-contenedor { display: flex; justify-content: center; }
+  .telefono {
+    width: 230px;
+    border-radius: 34px;
+    border: 7px solid #26262E;
+    background: #26262E;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+  .telefono img { display: block; width: 100%; }
+
+  /* --- Secciones genéricas --- */
+  section.bloque { padding: 72px 0; border-top: 1px solid var(--borde); }
+  h2.titulo-seccion {
+    font-size: clamp(24px, 3vw, 30px);
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    margin: 0 0 12px;
     text-align: center;
-    padding: 32px 24px;
-    box-sizing: border-box;
   }
-  .logo {
-    width: 64px;
-    height: 64px;
-    border-radius: 18px;
-    background: #6C63FF;
+  p.copete-seccion {
+    text-align: center;
+    color: var(--texto-tenue);
+    max-width: 520px;
+    margin: 0 auto 48px;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* --- Features --- */
+  .grilla-caracteristicas {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .tarjeta {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: 16px;
+    padding: 24px;
+  }
+  .icono-tarjeta {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(47, 111, 237, 0.16);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
-    margin-bottom: 24px;
+    margin-bottom: 14px;
   }
-  .barra {
-    width: 5px;
-    border-radius: 3px;
-    background: #FFFFFF;
+  .icono-tarjeta svg { width: 21px; height: 21px; color: var(--azul-claro); }
+  .tarjeta h3 { font-size: 16px; font-weight: 700; margin: 0 0 6px; }
+  .tarjeta p { font-size: 14px; line-height: 1.55; color: var(--texto-tenue); margin: 0; }
+
+  /* --- Pasos de instalación --- */
+  .pasos {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    counter-reset: paso;
   }
-  h1 {
-    font-size: 22px;
-    font-weight: 600;
-    margin: 0 0 8px;
+  .paso { position: relative; padding-left: 46px; }
+  .paso::before {
+    counter-increment: paso;
+    content: counter(paso);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--superficie-2);
+    border: 1px solid var(--borde);
+    color: var(--azul-claro);
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  p {
-    font-size: 15px;
-    line-height: 1.5;
-    color: #C4C4CC;
-    max-width: 320px;
-    margin: 0;
+  .paso h3 { font-size: 15px; font-weight: 700; margin: 4px 0 6px; }
+  .paso p { font-size: 13.5px; line-height: 1.55; color: var(--texto-tenue); margin: 0; }
+
+  /* --- Footer --- */
+  footer {
+    border-top: 1px solid var(--borde);
+    padding: 32px 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  footer p { margin: 0; font-size: 13px; color: var(--texto-tenue); }
+  footer a { color: var(--texto-tenue); }
+
+  @media (max-width: 760px) {
+    .hero { grid-template-columns: 1fr; padding: 32px 0 48px; text-align: left; }
+    .telefono-contenedor { order: -1; margin-bottom: 8px; }
+    .telefono { width: 190px; }
+    .grilla-caracteristicas { grid-template-columns: 1fr; }
+    .pasos { grid-template-columns: 1fr; }
+    section.bloque { padding: 48px 0; }
   }
 </style>
 </head>
 <body>
-  <div class="contenedor">
-    <div class="logo">
-      <div class="barra" style="height: 14px;"></div>
-      <div class="barra" style="height: 22px;"></div>
-      <div class="barra" style="height: 32px;"></div>
-      <div class="barra" style="height: 22px;"></div>
-      <div class="barra" style="height: 14px;"></div>
+  <div class="envoltorio">
+    <header>
+      <div class="marca">
+        <img src="/assets/icono.png" alt="">
+        Unísono
+      </div>
+      <a class="enlace-github" href="https://github.com/Lualvarad0/Unisono" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        Código abierto
+      </a>
+    </header>
+
+    <div class="hero">
+      <div>
+        <h1>Tu repertorio.<br>Tu equipo.<br><span>Siempre sincronizados.</span></h1>
+        <p class="subtitulo">
+          Unísono es la app para equipos de alabanza: letra, acordes y
+          tonalidades a mano de todos, incluso sin internet. Armá el
+          setlist, transportá el tono y tocá en vivo sin depender de la
+          señal del lugar.
+        </p>
+        <div class="botonera">
+          <a id="boton-descarga" class="boton-descarga" href="https://github.com/Lualvarad0/Unisono/releases/latest" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+            <span id="texto-boton-descarga">Descargar para Android</span>
+          </a>
+        </div>
+        <p class="nota-descarga" id="nota-version">Buscando la última versión…</p>
+        <p class="requisitos">
+          Android 8 o superior · Instalador directo (todavía no está en
+          Google Play)
+        </p>
+      </div>
+      <div class="telefono-contenedor">
+        <div class="telefono">
+          <img src="/assets/captura-bienvenida.png" alt="Pantalla de bienvenida de Unísono">
+        </div>
+      </div>
     </div>
-    <h1>Unísono</h1>
-    <p>Tu repertorio. Tu equipo. Siempre sincronizados.</p>
+
+    <section class="bloque" id="funciones">
+      <h2 class="titulo-seccion">Pensada para el ensayo y el día del servicio</h2>
+      <p class="copete-seccion">
+        Nada de carpetas con hojas sueltas ni grupos de WhatsApp con PDFs
+        viejos — todo el equipo mira lo mismo, actualizado.
+      </p>
+      <div class="grilla-caracteristicas">
+        <div class="tarjeta">
+          <div class="icono-tarjeta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          </div>
+          <h3>Letra y acordes juntos</h3>
+          <p>Cargá la canción una vez; los acordes quedan ubicados sobre la letra, con transporte de tono instantáneo para cualquier instrumento.</p>
+        </div>
+        <div class="tarjeta">
+          <div class="icono-tarjeta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h3>Tu equipo, tu espacio</h3>
+          <p>Cada equipo arma el suyo con un código de 6 caracteres — nadie se mezcla con el repertorio de otro grupo por accidente.</p>
+        </div>
+        <div class="tarjeta">
+          <div class="icono-tarjeta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-8.49a6 6 0 0 0 0 8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+          </div>
+          <h3>Modo en vivo sin internet</h3>
+          <p>El líder inicia una canción y el resto la ve en el momento — sincronizado por Bluetooth/Wi-Fi local, sin depender de la señal del salón.</p>
+        </div>
+        <div class="tarjeta">
+          <div class="icono-tarjeta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          </div>
+          <h3>Setlists con aviso automático</h3>
+          <p>Armá el setlist del servicio y cada integrante recibe una notificación cuando se arma, cambia, o está por empezar.</p>
+        </div>
+        <div class="tarjeta">
+          <div class="icono-tarjeta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c6-4 9-8.5 9-13A9 9 0 0 0 3 9c0 4.5 3 9 9 13Z"/><circle cx="12" cy="9" r="2.5"/></svg>
+          </div>
+          <h3>Funciona sin internet</h3>
+          <p>Todo lo que ya abriste antes queda guardado en el celular — el repertorio se puede consultar aunque no haya datos ni Wi-Fi.</p>
+        </div>
+        <div class="tarjeta">
+          <div class="icono-tarjeta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          </div>
+          <h3>Código abierto</h3>
+          <p>Todo el código está disponible en GitHub — se puede revisar, reportar un problema, o contribuir.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="bloque" id="instalar">
+      <h2 class="titulo-seccion">Cómo instalarla</h2>
+      <p class="copete-seccion">
+        Como todavía no está en Google Play, el instalador se descarga
+        directo de GitHub. Tres pasos:
+      </p>
+      <div class="pasos">
+        <div class="paso">
+          <h3>Descargá el APK</h3>
+          <p>Tocá "Descargar para Android" arriba, desde el celular donde vas a usar la app.</p>
+        </div>
+        <div class="paso">
+          <h3>Permití instalar</h3>
+          <p>Android va a pedir habilitar "Instalar apps desconocidas" para el navegador — es normal en apps que no vienen de la tienda.</p>
+        </div>
+        <div class="paso">
+          <h3>Abrí el archivo</h3>
+          <p>Tocá la descarga para instalar. Las próximas versiones se actualizan encima, sin perder tus datos.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <p>Unísono — hecha para equipos de alabanza.</p>
+      <p><a href="https://github.com/Lualvarad0/Unisono" target="_blank" rel="noopener">github.com/Lualvarad0/Unisono</a></p>
+    </footer>
   </div>
+
+  <script>
+    (async () => {
+      const boton = document.getElementById('boton-descarga');
+      const nota = document.getElementById('nota-version');
+      try {
+        const res = await fetch('https://api.github.com/repos/Lualvarad0/Unisono/releases/latest');
+        if (!res.ok) throw new Error('sin respuesta');
+        const datos = await res.json();
+        const apk = (datos.assets || []).find((a) => a.name.endsWith('.apk'));
+        if (!apk) throw new Error('sin apk adjunto');
+        boton.href = apk.browser_download_url;
+        const mb = (apk.size / (1024 * 1024)).toFixed(1);
+        nota.innerHTML = `<strong>${datos.tag_name}</strong> · ${mb} MB`;
+      } catch (error) {
+        nota.textContent = 'No se pudo cargar la última versión — este botón lleva a la página de versiones en GitHub.';
+      }
+    })();
+  </script>
 </body>
 </html>
