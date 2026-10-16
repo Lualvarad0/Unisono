@@ -142,14 +142,70 @@
   .telefono {
     position: relative;
     z-index: 1;
-    width: 230px;
+    width: 240px;
     border-radius: 34px;
     border: 7px solid #26262E;
     background: #26262E;
     box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6);
     overflow: hidden;
   }
-  .telefono img { display: block; width: 100%; }
+
+  /* --- Maqueta de letra+acordes dentro del teléfono --- */
+  .pantalla-demo {
+    background: #FAFAFA;
+    color: #1C1C1F;
+    padding: 18px 16px 24px;
+    font-family: "Inter", sans-serif;
+  }
+  .demo-barra-estado {
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 3px;
+    margin-bottom: 10px;
+  }
+  .demo-barra-estado span {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #C7C7CD;
+  }
+  .demo-encabezado { margin-bottom: 16px; }
+  .demo-titulo { display: block; font-weight: 800; font-size: 15px; letter-spacing: -.2px; }
+  .demo-tono {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--azul);
+    background: rgba(47,111,237,0.12);
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .demo-linea {
+    padding: 4px 8px;
+    border-radius: 8px;
+    margin: 0 -8px 11px;
+  }
+  .demo-acordes {
+    display: flex;
+    gap: 18px;
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-weight: 700;
+    font-size: 11.5px;
+    color: var(--azul);
+    min-height: 14px;
+  }
+  .demo-letra {
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.3;
+    color: #1C1C1F;
+  }
+  /* Sin animación (prefers-reduced-motion o JS), la 2da línea queda
+     marcada como "la que está sonando" — mismo mensaje, sin movimiento. */
+  .demo-linea:nth-of-type(2) { background: rgba(47, 111, 237, 0.14); }
 
   /* --- Secciones genéricas --- */
   section.bloque { padding: 72px 0; border-top: 1px solid var(--borde); }
@@ -310,6 +366,15 @@
       50% { opacity: .75; transform: translate(-50%, -50%) scale(1.12); }
     }
     @keyframes fluir-sync { to { stroke-dashoffset: -24; } }
+    @keyframes recorrer-linea {
+      0%, 14%, 100% { background: transparent; }
+      5%, 9% { background: rgba(47, 111, 237, 0.14); }
+    }
+    .demo-linea { animation: recorrer-linea 6s ease-in-out infinite; background: transparent; }
+    .demo-linea:nth-of-type(1) { animation-delay: 0s; }
+    .demo-linea:nth-of-type(2) { animation-delay: 1.5s; }
+    .demo-linea:nth-of-type(3) { animation-delay: 3s; }
+    .demo-linea:nth-of-type(4) { animation-delay: 4.5s; }
     @keyframes respirar-nodo {
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.08); }
@@ -396,7 +461,35 @@
       <div class="telefono-contenedor">
         <div class="resplandor-hero"></div>
         <div class="telefono">
-          <img src="/assets/captura-bienvenida.png" alt="Pantalla de bienvenida de Unísono">
+          <div
+            class="pantalla-demo"
+            role="img"
+            aria-label="Letra y acordes de una canción en Unísono, con la línea que está sonando resaltada en vivo"
+          >
+            <div class="demo-barra-estado">
+              <span></span><span></span><span></span>
+            </div>
+            <div class="demo-encabezado">
+              <span class="demo-titulo">Cuán Grande Es Mi Dios</span><br>
+              <span class="demo-tono">Tono · G</span>
+            </div>
+            <div class="demo-linea">
+              <div class="demo-acordes"><span>G</span><span>D</span></div>
+              <div class="demo-letra">Cuán grande es tu amor</div>
+            </div>
+            <div class="demo-linea">
+              <div class="demo-acordes"><span>Em</span><span>C</span></div>
+              <div class="demo-letra">Grande en poder</div>
+            </div>
+            <div class="demo-linea">
+              <div class="demo-acordes"><span>G</span><span>D</span><span>Em</span></div>
+              <div class="demo-letra">Cuán grande es mi Dios</div>
+            </div>
+            <div class="demo-linea">
+              <div class="demo-acordes"><span>C</span><span>D</span></div>
+              <div class="demo-letra">Cuán grande es mi Dios</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
