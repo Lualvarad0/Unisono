@@ -168,13 +168,115 @@ class _EditorSimpleScreenState extends State<EditorSimpleScreen> {
     Navigator.of(context).pop(_construir().toChordPro());
   }
 
+  /// `PopScope` intercepta la flecha de atrás del AppBar (usa
+  /// `Navigator.maybePop`) y el back del sistema — pero no los `pop()`
+  /// directos como el de `_confirmar()` de arriba, así que tocar "Listo"
+  /// sigue cerrando sin pasar por acá. Sin esto, perder lo que se
+  /// escribió era con un solo toque de más: no había forma de volver
+  /// atrás por error y darse cuenta.
+  Future<void> _confirmarSalirSinGuardar() async {
+    if (_construir().toChordPro() == widget.contenidoInicial) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final descartar = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('¿Descartar los cambios?'),
+        content: const Text(
+          'La letra y los acordes que escribiste en esta pantalla todavía '
+          'no se guardaron en la canción.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Seguir editando'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Descartar'),
+          ),
+        ],
+      ),
+    );
+    if (descartar == true && mounted) Navigator.of(context).pop();
+  }
+
+  /// Encadena el diálogo de acordes a la próxima línea con palabras (de
+  /// esta sección o, si ya no quedan, de la siguiente) cuando se termina
+  /// de cargar la última palabra de una línea — en vez de tener que
+  /// volver a tocar cada palabra de cada línea a mano para una canción
+  /// completa. `saltarLineasVacias` solo es true en el avance automático:
+  /// un toque directo sobre "Acorde (línea instrumental)" siempre abre su
+  /// diálogo, nunca se saltea.
+  Future<void> _abrirAcordesEn(
+    int indiceSeccion,
+    int indiceLinea,
+    int indicePalabraInicial, {
+    bool saltarLineasVacias = false,
+  }) async {
+    if (indiceSeccion >= _secciones.length) return;
+    final seccion = _secciones[indiceSeccion];
+    if (indiceLinea >= seccion.lineas.length) {
+      await _abrirAcordesEn(indiceSeccion + 1, 0, 0, saltarLineasVacias: true);
+      return;
+    }
+    final linea = seccion.lineas[indiceLinea];
+    final palabras = _palabrasDe(linea);
+    if (palabras.isEmpty) {
+      if (saltarLineasVacias && linea.letraController.text.trim().isEmpty) {
+        await _abrirAcordesEn(indiceSeccion, indiceLinea + 1, 0, saltarLineasVacias: true);
+        return;
+      }
+      final resultado = await showDialog<String>(
+        context: context,
+        builder: (_) => _DialogoAcordeSuelto(valorInicial: linea.acordesPorPosicion[0]),
+      );
+      if (resultado == null) return;
+      setState(() {
+        if (resultado.isEmpty) {
+          linea.acordesPorPosicion.remove(0);
+        } else {
+          linea.acordesPorPosicion[0] = resultado;
+        }
+      });
+      return;
+    }
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _DialogoAcordesLinea(
+        palabras: palabras,
+        indiceInicial: indicePalabraInicial.clamp(0, palabras.length - 1),
+        acordesPorPosicion: linea.acordesPorPosicion,
+        onCambiar: () => setState(() {}),
+        onContinuar: () =>
+            _abrirAcordesEn(indiceSeccion, indiceLinea + 1, 0, saltarLineasVacias: true),
+      ),
+    );
+  }
+
+  List<({int inicio, String palabra})> _palabrasDe(_LineaEditable linea) => [
+        for (final m in RegExp(r'\S+').allMatches(linea.letraController.text))
+          (inicio: m.start, palabra: m.group(0)!),
+      ];
+
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
     final vistaPrevia = _construir();
     final etiquetas = _etiquetas();
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _confirmarSalirSinGuardar();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Letra y acordes'),
         actions: [
@@ -204,6 +306,7 @@ class _EditorSimpleScreenState extends State<EditorSimpleScreen> {
                 seccion: seccion,
                 etiqueta: etiquetas[seccion]!,
                 onCambiar: () => setState(() {}),
+                onAbrirAcordes: _abrirAcordesEn,
                 onDuplicar: () => _duplicarSeccion(seccion),
                 onQuitar: _secciones.length > 1 ? () => _quitarSeccion(seccion) : null,
               );
@@ -248,6 +351,7 @@ class _EditorSimpleScreenState extends State<EditorSimpleScreen> {
           ],
         ],
       ),
+      ),
     );
   }
 }
@@ -276,12 +380,16 @@ class _SeccionEditor extends StatelessWidget {
     required this.seccion,
     required this.etiqueta,
     required this.onCambiar,
+    required this.onAbrirAcordes,
     required this.onDuplicar,
     required this.onQuitar,
   });
 
   /// Posición real dentro de `ReorderableListView` — el handle de
-  /// arrastre lo necesita para saber qué ítem está moviendo.
+  /// arrastre lo necesita para saber qué ítem está moviendo, y también es
+  /// el índice de sección que se le pasa a `onAbrirAcordes` para que el
+  /// encadenado entre líneas (ver `_EditorSimpleScreenState._abrirAcordesEn`)
+  /// sepa a qué sección volver.
   final int indice;
   final _SeccionEditable seccion;
 
@@ -290,6 +398,11 @@ class _SeccionEditor extends StatelessWidget {
   /// hay campo para escribirla a mano.
   final String etiqueta;
   final VoidCallback onCambiar;
+
+  /// (índice de sección, índice de línea, índice de palabra) — vive en
+  /// `_EditorSimpleScreenState` porque ahí es donde se puede encadenar
+  /// hacia la sección siguiente al terminar la última línea de esta.
+  final void Function(int indiceSeccion, int indiceLinea, int indicePalabra) onAbrirAcordes;
   final VoidCallback onDuplicar;
   final VoidCallback? onQuitar;
 
@@ -404,13 +517,16 @@ class _SeccionEditor extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            for (final linea in seccion.lineas)
+            for (var li = 0; li < seccion.lineas.length; li++)
               _LineaEditor(
-                key: ObjectKey(linea),
-                linea: linea,
+                key: ObjectKey(seccion.lineas[li]),
+                linea: seccion.lineas[li],
                 onCambiar: onCambiar,
+                onAbrirAcordes: (indicePalabra) =>
+                    onAbrirAcordes(indice, li, indicePalabra),
                 onQuitar: seccion.lineas.length > 1
                     ? () {
+                        final linea = seccion.lineas[li];
                         linea.dispose();
                         seccion.lineas.remove(linea);
                         onCambiar();
@@ -504,11 +620,19 @@ class _LineaEditor extends StatelessWidget {
     super.key,
     required this.linea,
     required this.onCambiar,
+    required this.onAbrirAcordes,
     required this.onQuitar,
   });
 
   final _LineaEditable linea;
   final VoidCallback onCambiar;
+
+  /// Abre el diálogo de acordes de esta línea posicionado en el índice de
+  /// palabra que se tocó — la lógica de qué diálogo mostrar y cómo
+  /// encadenar a la próxima línea vive en `_EditorSimpleScreenState`
+  /// (`_abrirAcordesEn`), no acá: esta clase no sabe nada de sus líneas
+  /// hermanas, necesarias para poder seguir a la línea siguiente.
+  final void Function(int indicePalabra) onAbrirAcordes;
   final VoidCallback? onQuitar;
 
   static const _estiloMono = TextStyle(fontFamily: 'monospace', fontSize: 15);
@@ -517,40 +641,6 @@ class _LineaEditor extends StatelessWidget {
         for (final m in RegExp(r'\S+').allMatches(linea.letraController.text))
           (inicio: m.start, palabra: m.group(0)!),
       ];
-
-  /// Abre el diálogo de acordes ya posicionado en `indiceInicial` — de
-  /// ahí se puede seguir a cualquier otra palabra de la misma línea sin
-  /// volver a tocar nada en la pantalla de atrás. Antes cada palabra
-  /// abría y cerraba su propio diálogo — para una línea con 4 acordes
-  /// eran 4 idas y vueltas en vez de una sola.
-  Future<void> _editarAcordes(BuildContext context, int indiceInicial) async {
-    final palabras = _palabras();
-    if (palabras.isEmpty) {
-      final resultado = await showDialog<String>(
-        context: context,
-        builder: (_) => _DialogoAcordeSuelto(
-          valorInicial: linea.acordesPorPosicion[0],
-        ),
-      );
-      if (resultado == null) return;
-      if (resultado.isEmpty) {
-        linea.acordesPorPosicion.remove(0);
-      } else {
-        linea.acordesPorPosicion[0] = resultado;
-      }
-      onCambiar();
-      return;
-    }
-    await showDialog<void>(
-      context: context,
-      builder: (_) => _DialogoAcordesLinea(
-        palabras: palabras,
-        indiceInicial: indiceInicial,
-        acordesPorPosicion: linea.acordesPorPosicion,
-        onCambiar: onCambiar,
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -594,7 +684,7 @@ class _LineaEditor extends StatelessWidget {
                   ),
                   child: palabras.isEmpty
                       ? TextButton.icon(
-                          onPressed: () => _editarAcordes(context, 0),
+                          onPressed: () => onAbrirAcordes(0),
                           icon: const Icon(Icons.add, size: 16),
                           label: const Text('Acorde (línea instrumental)'),
                         )
@@ -606,7 +696,7 @@ class _LineaEditor extends StatelessWidget {
                             for (var i = 0; i < palabras.length; i++)
                               InkWell(
                                 borderRadius: BorderRadius.circular(6),
-                                onTap: () => _editarAcordes(context, i),
+                                onTap: () => onAbrirAcordes(i),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 2),
                                   child: Column(
@@ -711,12 +801,20 @@ class _DialogoAcordeSueltoState extends State<_DialogoAcordeSuelto> {
 /// palabra: tocás la primera, escribís, "Siguiente" en el teclado (o ›)
 /// pasa a la que sigue — se guarda sola al navegar o al cerrar. Antes
 /// cada palabra era un diálogo propio que había que abrir y cerrar.
+///
+/// Al llegar a la última palabra, "Siguiente"/‹›-derecha ya no se
+/// deshabilita: en vez de quedarse sin nada que hacer, cierra este
+/// diálogo y abre el de la próxima línea con palabras (`onContinuar`) —
+/// así se puede cargar una canción entera sin volver a tocar cada línea
+/// a mano desde la pantalla de atrás. "Listo" sigue siendo la salida
+/// explícita que corta la cadena en cualquier punto.
 class _DialogoAcordesLinea extends StatefulWidget {
   const _DialogoAcordesLinea({
     required this.palabras,
     required this.indiceInicial,
     required this.acordesPorPosicion,
     required this.onCambiar,
+    required this.onContinuar,
   });
 
   final List<({int inicio, String palabra})> palabras;
@@ -726,6 +824,7 @@ class _DialogoAcordesLinea extends StatefulWidget {
   /// mismo a medida que se navega, no al final.
   final Map<int, String> acordesPorPosicion;
   final VoidCallback onCambiar;
+  final VoidCallback onContinuar;
 
   @override
   State<_DialogoAcordesLinea> createState() => _DialogoAcordesLineaState();
@@ -768,6 +867,15 @@ class _DialogoAcordesLineaState extends State<_DialogoAcordesLinea> {
     Navigator.of(context).pop();
   }
 
+  /// Desde la última palabra: guarda, cierra este diálogo, y le pasa la
+  /// posta a `onContinuar` para que abra el de la próxima línea — a
+  /// diferencia de `_cerrar()`, que termina de cargar acordes del todo.
+  void _continuarEnSiguienteLinea() {
+    _guardarPosicionActual();
+    Navigator.of(context).pop();
+    widget.onContinuar();
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -793,19 +901,20 @@ class _DialogoAcordesLineaState extends State<_DialogoAcordesLinea> {
               controller: _controller,
               autofocus: true,
               textCapitalization: TextCapitalization.characters,
-              textInputAction: _esUltima ? TextInputAction.done : TextInputAction.next,
+              textInputAction: TextInputAction.next,
               style: _LineaEditor._estiloMono,
               decoration: const InputDecoration(
                 labelText: 'Acorde',
                 hintText: 'Ej. G, D/F#',
               ),
-              onSubmitted: (_) => _esUltima ? _cerrar() : _irA(_indice + 1),
+              onSubmitted: (_) =>
+                  _esUltima ? _continuarEnSiguienteLinea() : _irA(_indice + 1),
             ),
           ),
           IconButton(
             icon: const Icon(Icons.chevron_right),
-            tooltip: 'Palabra siguiente',
-            onPressed: _esUltima ? null : () => _irA(_indice + 1),
+            tooltip: _esUltima ? 'Siguiente línea' : 'Palabra siguiente',
+            onPressed: _esUltima ? _continuarEnSiguienteLinea : () => _irA(_indice + 1),
           ),
         ],
       ),
@@ -842,7 +951,7 @@ class _LineaEditable {
 
   /// Posición de caracter dentro de `letraController.text` -> texto del
   /// acorde que va arriba de esa palabra. Se toca la palabra para
-  /// editarlo — ver `_LineaEditor._editarAcordes`.
+  /// editarlo — ver `_EditorSimpleScreenState._abrirAcordesEn`.
   final Map<int, String> acordesPorPosicion;
 
   void dispose() {

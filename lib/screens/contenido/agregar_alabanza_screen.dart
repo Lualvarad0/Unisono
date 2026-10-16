@@ -125,7 +125,16 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
         builder: (_) => EditorSimpleScreen(contenidoInicial: _contenidoChordPro),
       ),
     );
-    if (resultado != null) setState(() => _contenidoChordPro = resultado);
+    if (resultado == null) return;
+    setState(() => _contenidoChordPro = resultado);
+    if (!mounted) return;
+    // El editor en sí no guarda nada en Firestore todavía (eso pasa recién
+    // al tocar "Guardar alabanza" más abajo) — este aviso es para que
+    // quede claro que la letra SÍ quedó cargada en el formulario, aunque
+    // la canción en conjunto todavía no se haya guardado.
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Letra y acordes cargados — falta guardar la alabanza.')),
+    );
   }
 
   /// Camino secundario, para quien ya tiene el archivo ChordPro de otra
@@ -223,12 +232,68 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
 
     if (!mounted) return;
     Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(_editando ? 'Cambios guardados.' : 'Canción guardada.')),
+    );
+  }
+
+  /// true si hay algo escrito que se perdería al salir sin tocar
+  /// "Guardar" — comparado contra lo que ya traía `cancionExistente` (al
+  /// editar) o contra "vacío" (al crear). Antes de esto, la flecha de
+  /// atrás o el botón físico del celular cerraban el formulario sin
+  /// avisar nada, sin importar cuánto se hubiera escrito.
+  bool get _hayCambiosSinGuardar {
+    final original = widget.cancionExistente;
+    if (original == null) {
+      return _tituloController.text.trim().isNotEmpty || _contenidoChordPro.trim().isNotEmpty;
+    }
+    return _tituloController.text.trim() != original.titulo ||
+        _contenidoChordPro != original.contenidoChordPro;
+  }
+
+  Future<void> _confirmarSalirSinGuardar() async {
+    if (!_hayCambiosSinGuardar) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final descartar = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('¿Descartar esta alabanza?'),
+        content: Text(
+          _editando
+              ? 'Los cambios que hiciste todavía no se guardaron.'
+              : 'Lo que cargaste hasta ahora (título, letra y acordes) '
+                  'todavía no se guardó.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Seguir cargando'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Descartar'),
+          ),
+        ],
+      ),
+    );
+    if (descartar == true && mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _confirmarSalirSinGuardar();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(_editando ? 'Editar alabanza' : 'Nueva alabanza'),
       ),
@@ -397,6 +462,7 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
