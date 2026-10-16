@@ -33,7 +33,12 @@ class _AgregarEjercicioScreenState extends State<AgregarEjercicioScreen> {
 
   Future<void> _guardar() async {
     final titulo = _tituloController.text.trim();
-    if (titulo.isEmpty) return;
+    if (titulo.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Falta el título del ejercicio.')),
+      );
+      return;
+    }
     setState(() => _guardando = true);
     final uid = context.read<AutenticacionService>().usuarioActual!.uid;
     final seccion = _seccionController.text.trim();

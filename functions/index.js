@@ -37,6 +37,31 @@ async function tokensDelEquipo({ excluirId } = {}) {
 }
 
 /**
+ * Límite de frecuencia para avisos a todo el equipo: `firestore.rules`
+ * deja que cualquier integrante autenticado escriba en `actividades`
+ * (hace falta para que el líder pueda armar un setlist), así que nada
+ * impide que alguien —con mala intención, o por un bug del lado del
+ * cliente— dispare `onModoEnVivoIniciado`/`onSetlistEscrito` a repetición
+ * tocando el mismo campo varias veces seguidas, mandándole un push a
+ * todo el equipo cada vez. Esto frena eso: un mismo aviso (misma
+ * `clave`) no se repite dentro de la ventana, sin importar cuántas
+ * escrituras lo disparen.
+ */
+const VENTANA_RATE_LIMIT_MS = 2 * 60 * 1000;
+
+async function dentroDelLimite(clave) {
+  const ref = db.collection("rateLimitsAvisos").doc(clave);
+  const ahora = Date.now();
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const ultimo = snap.exists ? snap.data().ultimoEnviadoMs : 0;
+    if (ahora - ultimo < VENTANA_RATE_LIMIT_MS) return true;
+    tx.set(ref, { ultimoEnviadoMs: ahora });
+    return false;
+  });
+}
+
+/**
  * El líder inicia "Modo en vivo": `cancionActivaId` pasa de vacío a tener
  * valor. Es el mismo campo que ya usa Vista en vivo (Firestore en tiempo
  * real) para que los celulares sepan qué mostrar — acá solo se avisa
@@ -46,6 +71,7 @@ exports.onModoEnVivoIniciado = onDocumentUpdated("actividades/{actividadId}", as
   const antes = event.data.before.data();
   const despues = event.data.after.data();
   if (antes.cancionActivaId || !despues.cancionActivaId) return;
+  if (await dentroDelLimite(`modoEnVivo_${event.params.actividadId}`)) return;
 
   const tokens = await tokensDelEquipo({});
   await notificar(tokens, {
@@ -67,6 +93,7 @@ exports.onSetlistEscrito = onDocumentWritten("actividades/{actividadId}", async 
   const antesExiste = event.data.before.exists;
   if (!antesExiste) {
     if ((despues.setlist || []).length === 0) return;
+    if (await dentroDelLimite(`setlist_${event.params.actividadId}`)) return;
     const tokens = await tokensDelEquipo({});
     await notificar(tokens, {
       title: "📋 Nuevo setlist",
@@ -107,6 +134,7 @@ exports.onSetlistEscrito = onDocumentWritten("actividades/{actividadId}", async 
   const firmaAntes = JSON.stringify(setlistAntes.map((e) => [e.cancionId, e.orden]));
   const firmaDespues = JSON.stringify(setlistDespues.map((e) => [e.cancionId, e.orden]));
   if (firmaAntes !== firmaDespues) {
+    if (await dentroDelLimite(`setlist_${event.params.actividadId}`)) return;
     const tokens = await tokensDelEquipo({});
     await notificar(tokens, {
       title: "📋 Setlist actualizado",

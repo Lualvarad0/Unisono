@@ -80,9 +80,34 @@ class AppTheme {
       brightness: brightness,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: colorScheme.surface,
+      // Material 3 deja los títulos en peso regular por defecto — liviano
+      // para una app que se lee de lejos (atril) y donde el título de
+      // pantalla tiene que notarse de un vistazo. Antes cada pantalla
+      // compensaba esto a mano con `?.copyWith(fontWeight: FontWeight.w600)`
+      // repetido por todos lados (Login, Perfil, Detalle de alabanza...) —
+      // ahora es el default, y una pantalla nueva no necesita acordarse de
+      // repetirlo. `letterSpacing` un poco más cerrado en los títulos
+      // grandes: Inter a esos tamaños se ve suelto con el tracking por
+      // defecto de Material.
       textTheme: textTheme.copyWith(
+        displaySmall: textTheme.displaySmall?.copyWith(
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.5,
+        ),
+        headlineMedium: textTheme.headlineMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.3,
+        ),
+        headlineSmall: textTheme.headlineSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.2,
+        ),
+        titleLarge: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+        titleMedium: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        titleSmall: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
         bodyLarge: textTheme.bodyLarge?.copyWith(fontSize: 18),
         bodyMedium: textTheme.bodyMedium?.copyWith(fontSize: 16),
+        labelLarge: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,

@@ -88,7 +88,12 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
 
   Future<void> _guardar() async {
     final nombre = _nombreController.text.trim();
-    if (nombre.isEmpty) return;
+    if (nombre.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Falta tu nombre.')),
+      );
+      return;
+    }
     setState(() => _guardando = true);
     final repositorio = context.read<MiembroRepository>();
     final instrumento = _instrumentoController.text.trim();

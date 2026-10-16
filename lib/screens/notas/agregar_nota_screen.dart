@@ -37,7 +37,12 @@ class _AgregarNotaScreenState extends State<AgregarNotaScreen> {
 
   Future<void> _guardar() async {
     final texto = _textoController.text.trim();
-    if (texto.isEmpty) return;
+    if (texto.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Escribí algo antes de guardar.')),
+      );
+      return;
+    }
     setState(() => _guardando = true);
     final uid = context.read<AutenticacionService>().usuarioActual!.uid;
     await context.read<NotaRepository>().crear(

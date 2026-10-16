@@ -106,7 +106,12 @@ class _AgregarActividadScreenState extends State<AgregarActividadScreen> {
 
   Future<void> _guardar() async {
     final nombre = _nombreController.text.trim();
-    if (nombre.isEmpty) return;
+    if (nombre.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Falta el nombre de la actividad.')),
+      );
+      return;
+    }
     setState(() => _guardando = true);
     final repositorio = context.read<ActividadRepository>();
     final setlistOrdenado = [
