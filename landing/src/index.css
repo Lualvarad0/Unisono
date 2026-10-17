@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --color-fondo: #0b0b0f;
+  --color-superficie: #16161c;
+  --color-superficie-2: #1d1d25;
+  --color-borde: #2a2a33;
+  --color-primary: #2f6fed;
+  --color-primary-claro: #6b9bff;
+  --color-texto: #f2f2f5;
+  --color-texto-tenue: #9a9aa5;
+  --font-sans: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Textura de ruido sutil, reusada sobre el fondo del hero y de Features —
+   mismo recurso visual en ambos lugares, variando opacidad. SVG inline en
+   vez de una imagen: no pesa nada y escala sin perder nitidez. */
+.noise-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.bg-noise {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@keyframes derivar {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-3%, 2%) scale(1.08); }
+}
+
+@keyframes recorrer-linea {
+  0%, 14%, 100% { background-color: transparent; }
+  5%, 9% { background-color: color-mix(in srgb, var(--color-primary) 14%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

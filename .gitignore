@@ -41,3 +41,7 @@ firebase.json
 
 # Coverage
 coverage/
+
+# Landing (landing/) — Vite + React, ver landing/README.md
+landing/node_modules/
+landing/dist/
