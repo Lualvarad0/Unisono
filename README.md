@@ -182,6 +182,37 @@ Secrets del repositorio (`Settings → Secrets and variables → Actions`):
 `ANDROID_KEY_ALIAS` — ver [docs/SEGURIDAD.md](docs/SEGURIDAD.md#manejo-de-secretos)
 para qué es cada uno y cómo generarlos.
 
+## 🌐 Desplegar la landing
+
+La landing (`landing/`, ver [landing/README.md](landing/README.md)) es
+un proyecto React + Vite aparte, servido por Firebase Hosting en
+[app-alabanzas.web.app](https://app-alabanzas.web.app).
+
+```bash
+cd landing
+npm install   # solo la primera vez
+npm run build
+cd ..
+firebase deploy --only hosting
+```
+
+`firebase.json` no está en el repo (es local a cada clon, igual que
+`lib/firebase_options.dart` — ver [docs/SEGURIDAD.md](docs/SEGURIDAD.md#manejo-de-secretos)),
+así que en un clon nuevo hace falta crearlo con `hosting.public`
+apuntando a `landing/dist`:
+
+```json
+{
+  "hosting": {
+    "public": "landing/dist"
+  }
+}
+```
+
+(Si ya corriste `firebase deploy --only firestore:rules,storage,functions`
+antes — ver [Levantar el proyecto](#levantar-el-proyecto) — `firebase.json`
+ya existe; solo hay que agregarle el bloque `hosting` de arriba.)
+
 ## 🎵 Cargar tu propio repertorio (ChordPro)
 
 Las canciones se guardan en `Cancion.contenidoChordPro` en formato
