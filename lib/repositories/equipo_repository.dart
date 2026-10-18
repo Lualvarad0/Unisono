@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 import 'package:app_alabanzas/core/firestore/firestore_repository.dart';
 import 'package:app_alabanzas/models/equipo.dart';
@@ -38,12 +39,24 @@ class EquipoRepository extends FirestoreRepository<Equipo> {
     throw StateError('No se pudo generar un código de equipo único.');
   }
 
+  /// Pasa por la Cloud Function callable `buscarEquipoPorCodigo` en vez
+  /// de una query directa a Firestore — a propósito: una query directa
+  /// necesita que `firestore.rules` deje hacer `list` sobre toda la
+  /// colección `equipos`, lo que expondría el código de TODOS los
+  /// equipos a cualquier cuenta autenticada, no solo el que se busca acá.
+  /// Ver docs/SEGURIDAD.md, auditoría 2026-10-17.
   Future<Equipo?> buscarPorCodigo(String codigo) async {
-    final resultado = await collection
-        .where('codigo', isEqualTo: codigo.trim().toUpperCase())
-        .limit(1)
-        .get();
-    if (resultado.docs.isEmpty) return null;
-    return resultado.docs.first.data();
+    final codigoNormalizado = codigo.trim().toUpperCase();
+    final resultado = await FirebaseFunctions.instance
+        .httpsCallable('buscarEquipoPorCodigo')
+        .call<Map<String, dynamic>>({'codigo': codigoNormalizado});
+    final datos = resultado.data;
+    if (datos['encontrado'] != true) return null;
+    return Equipo(
+      id: datos['equipoId'] as String,
+      nombre: datos['nombre'] as String? ?? '',
+      codigo: codigoNormalizado,
+      creadoPorUid: datos['creadoPorUid'] as String? ?? '',
+    );
   }
 }

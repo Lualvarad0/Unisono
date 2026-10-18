@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -139,18 +140,28 @@ class _FormularioCrearState extends State<_FormularioCrear> {
     final equipoRepositorio = context.read<EquipoRepository>();
     final usuarioEquipoRepositorio = context.read<UsuarioEquipoRepository>();
 
-    final codigo = await equipoRepositorio.generarCodigoUnico();
-    final equipoId = await equipoRepositorio.crear(
-      Equipo(id: '', nombre: nombreEquipo, codigo: codigo, creadoPorUid: uid),
-    );
-    final miembroId = await MiembroRepository(equipoId: equipoId).crear(
-      Miembro(id: '', nombre: tuNombre, roles: const [RolMiembro.lider], uid: uid),
-    );
-    await usuarioEquipoRepositorio.vincular(
-      uid: uid,
-      equipoId: equipoId,
-      miembroId: miembroId,
-    );
+    try {
+      final codigo = await equipoRepositorio.generarCodigoUnico();
+      final equipoId = await equipoRepositorio.crear(
+        Equipo(id: '', nombre: nombreEquipo, codigo: codigo, creadoPorUid: uid),
+      );
+      final miembroId = await MiembroRepository(equipoId: equipoId).crear(
+        Miembro(id: '', nombre: tuNombre, roles: const [RolMiembro.lider], uid: uid),
+      );
+      await usuarioEquipoRepositorio.vincular(
+        uid: uid,
+        equipoId: equipoId,
+        miembroId: miembroId,
+      );
+    } on FirebaseFunctionsException catch (e) {
+      if (!mounted) return;
+      setState(() => _creando = false);
+      final mensaje = e.code == 'resource-exhausted'
+          ? 'Demasiados intentos — esperá un momento y probá de nuevo.'
+          : 'No se pudo crear el equipo — revisá tu conexión y probá de nuevo.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje)));
+      return;
+    }
     if (!mounted) return;
     widget.onListo();
   }
@@ -235,7 +246,18 @@ class _FormularioUnirseState extends State<_FormularioUnirse> {
     final codigo = _codigoController.text.trim();
     if (codigo.isEmpty) return;
     setState(() => _verificando = true);
-    final equipo = await context.read<EquipoRepository>().buscarPorCodigo(codigo);
+    Equipo? equipo;
+    try {
+      equipo = await context.read<EquipoRepository>().buscarPorCodigo(codigo);
+    } on FirebaseFunctionsException catch (e) {
+      if (!mounted) return;
+      setState(() => _verificando = false);
+      final mensaje = e.code == 'resource-exhausted'
+          ? 'Demasiados intentos — esperá un momento y probá de nuevo.'
+          : 'No se pudo verificar el código — revisá tu conexión y probá de nuevo.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje)));
+      return;
+    }
     if (!mounted) return;
     if (equipo == null) {
       setState(() => _verificando = false);
@@ -244,11 +266,11 @@ class _FormularioUnirseState extends State<_FormularioUnirse> {
       );
       return;
     }
-    final miembros = await MiembroRepository(equipoId: equipo.id).fetchAll();
+    final sinReclamar = await MiembroRepository(equipoId: equipo.id).fetchSinReclamar();
     if (!mounted) return;
     setState(() {
       _equipo = equipo;
-      _sinReclamar = miembros.where((m) => m.uid == null).toList();
+      _sinReclamar = sinReclamar;
       _verificando = false;
     });
   }
