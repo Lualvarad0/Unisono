@@ -1,6 +1,7 @@
 const { setGlobalOptions } = require("firebase-functions");
 const { onDocumentUpdated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 
@@ -66,6 +67,79 @@ async function dentroDelLimite(clave) {
     return false;
   });
 }
+
+/**
+ * Límite de N intentos por ventana (a diferencia de `dentroDelLimite`,
+ * que es "como mucho uno por ventana") — pensado para algo que un
+ * usuario real reintenta varias veces seguidas sin culpa (tipeó mal un
+ * código), pero que no puede quedar abierto a fuerza bruta: probar las
+ * 32^6 combinaciones del código de equipo a mano tardaría años igual,
+ * pero sin esto un script sí podría probar miles por segundo.
+ */
+async function intentosPermitidos(clave, { maxIntentos, ventanaMs }) {
+  const ref = db.collection("rateLimitsIntentos").doc(clave);
+  const ahora = Date.now();
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const datos = snap.exists ? snap.data() : null;
+    const dentroDeVentana = datos && ahora - datos.inicioMs < ventanaMs;
+    const intentosPrevios = dentroDeVentana ? datos.intentos : 0;
+    if (intentosPrevios >= maxIntentos) return false;
+    tx.set(ref, {
+      inicioMs: dentroDeVentana ? datos.inicioMs : ahora,
+      intentos: intentosPrevios + 1,
+    });
+    return true;
+  });
+}
+
+/**
+ * Busca un equipo por su código de 6 caracteres — del lado del
+ * servidor, con el Admin SDK, a propósito: antes esto era una query
+ * directa desde el cliente (`equipos.where('codigo', '==', ...)`), y
+ * para que esa query pudiera funcionar `firestore.rules` tenía que
+ * dejar leer (`list`) la colección `equipos` entera a cualquier
+ * autenticado — lo que de paso dejaba que cualquiera listara el
+ * nombre y el código de TODOS los equipos de un saque, sin necesitar
+ * ningún código. Acá en cambio el cliente nunca puede listar nada:
+ * solo recibe sí/no + el equipo puntual que preguntó, y con un límite
+ * de intentos para que probar códigos al voleo no sea gratis.
+ */
+exports.buscarEquipoPorCodigo = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Hace falta estar logueado.");
+  }
+  const codigoCrudo = request.data?.codigo;
+  if (typeof codigoCrudo !== "string") {
+    throw new HttpsError("invalid-argument", "Falta el código.");
+  }
+  const codigo = codigoCrudo.trim().toUpperCase();
+  if (!/^[A-Z0-9]{6}$/.test(codigo)) {
+    throw new HttpsError("invalid-argument", "El código tiene que tener 6 caracteres.");
+  }
+
+  const permitido = await intentosPermitidos(`buscarCodigo_${request.auth.uid}`, {
+    maxIntentos: 20,
+    ventanaMs: 5 * 60 * 1000,
+  });
+  if (!permitido) {
+    throw new HttpsError(
+      "resource-exhausted",
+      "Demasiados intentos — esperá un momento y probá de nuevo.",
+    );
+  }
+
+  const resultado = await db.collection("equipos").where("codigo", "==", codigo).limit(1).get();
+  if (resultado.empty) return { encontrado: false };
+  const doc = resultado.docs[0];
+  const datos = doc.data();
+  return {
+    encontrado: true,
+    equipoId: doc.id,
+    nombre: datos.nombre,
+    creadoPorUid: datos.creadoPorUid,
+  };
+});
 
 /**
  * El líder inicia "Modo en vivo": `cancionActivaId` pasa de vacío a tener

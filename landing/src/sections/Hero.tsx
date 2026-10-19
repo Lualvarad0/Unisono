@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { label: "Funciones", href: "#funciones" },
   { label: "Cómo sincroniza", href: "#como-funciona" },
   { label: "Instalar", href: "#instalar" },
+  { label: "Reportar falla", href: "#reportar" },
 ];
 
 export function Hero() {

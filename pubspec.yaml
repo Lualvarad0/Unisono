@@ -24,6 +24,14 @@ dependencies:
   # en el documento del Miembro (Firestore no es para archivos binarios).
   firebase_storage: ^12.3.2
 
+  # Buscar equipo por código (ver EquipoRepository.buscarPorCodigo) pasa
+  # por la Cloud Function callable `buscarEquipoPorCodigo` en vez de una
+  # query directa del cliente — ver docs/SEGURIDAD.md, auditoría
+  # 2026-10-17: una query directa necesitaba dejar `list` abierto sobre
+  # toda la colección `equipos`, lo que exponía el código de todos los
+  # equipos a cualquier cuenta autenticada.
+  cloud_functions: ^5.1.3
+
   # Tipografía del sistema de diseño (Nocturne): Inter para todo el texto.
   google_fonts: ^6.2.1
 

@@ -18,19 +18,33 @@ rules_version = '2';
 // específico no puede ser más estricto que uno genérico que también
 // matchee ahí. Por eso cada subcolección tiene su propio bloque en vez
 // de un comodín que las cubra todas.
+//
+// Auditoría de seguridad (2026-10-17) — cadena de fallas encontrada y
+// cerrada acá, ver docs/SEGURIDAD.md para el detalle completo:
+// `equipos` dejaba `list` a cualquier autenticado (exponía el código
+// de TODOS los equipos), `miembros.create` dejaba auto-crearse un
+// perfil en CUALQUIER equipoId (no solo uno propio), y
+// `usuarioEquipo.create` no cruzaba nada contra el Miembro real —
+// combinadas, una cuenta nueva podía tomar lectura/escritura total de
+// cualquier equipo sin el código. La búsqueda por código ahora es la
+// Cloud Function `buscarEquipoPorCodigo` (Admin SDK, nunca expone la
+// colección entera), y las reglas de abajo ya no necesitan `list`.
 service cloud.firestore {
   match /databases/{database}/documents {
     function equipoDeUsuario() {
       return get(/databases/$(database)/documents/usuarioEquipo/$(request.auth.uid)).data.equipoId;
     }
 
-    // El directorio de equipos en sí — nombre y código, nada sensible.
-    // Cualquiera logueado puede leerlo (hace falta para validar un
-    // código al unirse) y crear uno nuevo; no se edita ni se borra por
-    // ahora.
+    // El directorio de equipos en sí. `get` puntual sí (hace falta
+    // conocer el equipoId exacto, que es un ID autogenerado de 20
+    // caracteres — no algo adivinable), pero `list` no: buscar por
+    // código pasa por la Cloud Function `buscarEquipoPorCodigo`, nunca
+    // por una query directa del cliente contra esta colección.
     match /equipos/{equipoId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
+      allow get: if request.auth != null;
+      allow list: if false;
+      allow create: if request.auth != null
+        && request.resource.data.creadoPorUid == request.auth.uid;
       allow update, delete: if false;
 
       match /ritmos/{id} {
@@ -52,24 +66,58 @@ service cloud.firestore {
         allow read, write: if request.auth != null && equipoDeUsuario() == equipoId;
       }
 
-      // `miembros` necesita su propia regla, más allá del resto: crear o
-      // reclamar un perfil pasa ANTES de que exista `usuarioEquipo/{uid}`
-      // (es parte del mismo paso de unirse/crear equipo), así que
-      // `equipoDeUsuario()` todavía no resuelve nada en ese momento —
-      // por eso el "o" en `create`. El resto (leer, cambiar roles de
-      // otra persona) ya exige pertenecer al equipo como siempre.
+      // `miembros` necesita su propia regla, más allá del resto.
       //
-      // Y la misma protección contra robo de identidad que ya existía:
-      // el campo `uid` de un perfil ya reclamado no se puede pisar con
-      // otro — solo se puede fijar una vez, al reclamarlo.
+      // `read` deja ver un perfil sin reclamar (`uid == null`) a
+      // cualquier autenticado, no solo a quien ya es del equipo: es la
+      // lista de nombres para elegir al unirse con un código (ver
+      // `ElegirEquipoScreen`), que pasa justo ANTES de pertenecer. Esto
+      // no filtra nada sensible porque solo funciona para una query que
+      // ya viene filtrada por `uid == null` del lado del cliente — ver
+      // `MiembroRepository.fetchSinReclamar` — Firestore rechaza
+      // cualquier lectura que pudiera devolver un perfil ya reclamado.
+      //
+      // `create` tiene dos caminos:
+      // - Ya sos del equipo (`equipoDeUsuario() == equipoId`): podés
+      //   crear perfiles sin reclamar para invitar gente — ver
+      //   `InvitarMiembroScreen`.
+      // - Te estás creando a vos mismo (`uid == request.auth.uid`):
+      //   pasa en dos momentos sin `usuarioEquipo/{uid}` todavía — el
+      //   líder armando su equipo nuevo, y alguien uniéndose a un
+      //   equipo existente como integrante nuevo (no está en la lista
+      //   de perfiles invitados, ver `ElegirEquipoScreen._confirmarNuevo`).
+      //   No hace falta cruzar nada más acá: para llegar a un
+      //   `equipoId` real hay que conocerlo (es un ID autogenerado de
+      //   20 caracteres, no adivinable) — y la única forma de
+      //   conseguirlo es a través de la Cloud Function
+      //   `buscarEquipoPorCodigo` (con el código real) o ya siendo
+      //   parte del equipo. La falla que esto cierra no estaba acá:
+      //   estaba en que antes cualquiera podía LISTAR todos los
+      //   equipoId existentes (`equipos` dejaba `list`, ver arriba) sin
+      //   necesitar ningún código — con `list` cerrado, un `equipoId`
+      //   vale como secreto por sí solo.
+      //
+      // `update` separa dos casos que antes compartían una sola
+      // condición (y por eso el segundo, reclamar un perfil invitado,
+      // quedaba roto: exigía pertenecer al equipo *antes* de que el
+      // reclamo mismo fuera lo que te hace pertenecer):
+      // - Editar un perfil que ya es tuyo o de un compañero (cambiar
+      //   roles, instrumento, etc.): exige ya pertenecer al equipo, y
+      //   el `uid` no se toca.
+      // - Reclamar un perfil invitado sin dueño (`uid == null`): no
+      //   exige pertenecer todavía — para que exista un perfil con
+      //   `uid == null` en este equipoId alguien que SÍ pertenecía ya
+      //   tuvo que crearlo (ver el primer camino de `create`, arriba),
+      //   así que esto no abre ninguna puerta nueva.
       match /miembros/{miembroId} {
-        allow read: if request.auth != null && equipoDeUsuario() == equipoId;
+        allow read: if request.auth != null &&
+          (equipoDeUsuario() == equipoId || resource.data.uid == null);
         allow create: if request.auth != null && (
           equipoDeUsuario() == equipoId ||
           request.resource.data.uid == request.auth.uid
         );
-        allow update: if request.auth != null && equipoDeUsuario() == equipoId && (
-          request.resource.data.uid == resource.data.uid ||
+        allow update: if request.auth != null && (
+          (equipoDeUsuario() == equipoId && request.resource.data.uid == resource.data.uid) ||
           (resource.data.uid == null && request.resource.data.uid == request.auth.uid)
         );
         allow delete: if false;
@@ -78,11 +126,42 @@ service cloud.firestore {
 
     // A qué equipo pertenece cada cuenta — ver la función de arriba. Se
     // escribe una sola vez (al crear o unirse a un equipo) y nunca se
-    // reasigna desde acá.
+    // reasigna desde acá. Solo se puede leer y crear la propia — antes
+    // dejaba leer cualquier uid, lo que filtraba a qué equipo pertenece
+    // cualquier persona del sistema sin necesidad real (la propia
+    // función `equipoDeUsuario()` no depende de este `allow read`: el
+    // `get()` adentro de una regla no pasa por las reglas de lectura de
+    // la colección que lee).
+    //
+    // El `create` cruza contra el `Miembro` real en vez de confiar en
+    // lo que mande el cliente: sin esto, cualquier cuenta podía
+    // vincularse a cualquier (equipoId, miembroId) inventado y quedar
+    // con acceso total a ese equipo — la otra mitad de la falla que se
+    // cerró en esta auditoría, junto con el `create` de `miembros` de
+    // arriba.
     match /usuarioEquipo/{uid} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid &&
+        get(/databases/$(database)/documents/equipos/$(request.resource.data.equipoId)/miembros/$(request.resource.data.miembroId)).data.uid == request.auth.uid;
       allow update, delete: if false;
+    }
+
+    // Reportes de falla desde la landing (sin login — ver
+    // docs/SEGURIDAD.md). Cualquiera puede crear uno, nadie puede
+    // leerlos, editarlos ni borrarlos desde el cliente — ni siquiera
+    // quien lo mandó: es un buzón de un solo sentido, se revisan desde
+    // la consola de Firebase. `hasOnly` evita que se cuelen campos de
+    // más, y `creadoEn == request.time` fuerza que la fecha la ponga el
+    // servidor, no algo que mande el cliente.
+    match /reportesDeFalla/{reporteId} {
+      allow read, update, delete: if false;
+      allow create: if request.resource.data.keys().hasOnly(['mensaje', 'imagenUrl', 'creadoEn'])
+        && request.resource.data.mensaje is string
+        && request.resource.data.mensaje.size() > 0
+        && request.resource.data.mensaje.size() <= 2000
+        && (!('imagenUrl' in request.resource.data)
+            || (request.resource.data.imagenUrl is string && request.resource.data.imagenUrl.size() <= 500))
+        && request.resource.data.creadoEn == request.time;
     }
   }
 }

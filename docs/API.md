@@ -56,6 +56,7 @@ WhatsApp) — ver `EquipoRepository.generarCodigoUnico`.
 | `notas/{id}` | `texto`, `compartida`, `autorUid`, `cancionId?`, `seccionEtiqueta?` | `compartida=false` → solo la ve quien la escribió. |
 | `ejercicios/{id}` | `titulo`, `descripcion`, `autorUid`, `cancionId?`, `seccionEtiqueta?`, `completadoPorUids[]` | Cada integrante se agrega a `completadoPorUids` por su cuenta. |
 | `miembros/{id}` | `nombre`, `apellido`, `roles[]`, `uid?`, `fechaNacimiento?`, `telefono?`, `instrumento?`, `nivelInstrumento?`, `fotoUrl?`, `fcmToken?` | `uid=null` = perfil invitado sin reclamar (ver [Seguridad](SEGURIDAD.md)). `roles` es una lista de `lider`/`musico`/`cantante` — alguien puede tener varios. |
+| `reportesDeFalla/{id}` | `mensaje`, `imagenUrl?`, `creadoEn` | Raíz, no dentro de un equipo. Lo escribe la landing (`landing/`, sin login) — ver [Seguridad](SEGURIDAD.md#reportes-de-falla-desde-la-landing-sin-login). Solo creación, nadie lo puede leer de vuelta desde el cliente. |
 
 `SetlistEntry` (`cancionId`, `orden`, `cantanteId`, `tonoAsignado`) no es
 un documento propio: vive embebido en `Actividad.setlist` porque siempre
@@ -117,19 +118,22 @@ existen los providers a nivel de cuenta (`AutenticacionService`,
 ## Cloud Functions
 
 Código en [`functions/index.js`](../functions/index.js), Node 24,
-desplegadas con `firebase deploy --only functions`. Las cuatro son
-*triggers* sobre escrituras de Firestore o un *scheduler* — nada se
-llama por HTTP.
+desplegadas con `firebase deploy --only functions`. Cuatro son
+*triggers* sobre escrituras de Firestore o un *scheduler*; una es
+*callable* (`onCall`, el cliente la invoca directo por su nombre, sin
+necesitar un trigger de Firestore).
 
 | Función | Dispara con | Qué hace |
 |---|---|---|
+| `buscarEquipoPorCodigo` | `onCall`, la llama `EquipoRepository.buscarPorCodigo` (Dart) | Busca un equipo por su código de 6 caracteres **del lado del servidor** — ver [docs/SEGURIDAD.md § Auditoría 2026-10-17](SEGURIDAD.md#auditoría-2026-10-17) para por qué no es una query directa del cliente. Rate limit de 20 intentos / 5 min por cuenta. |
 | `onModoEnVivoIniciado` | `onDocumentUpdated` en `equipos/{equipoId}/actividades/{actividadId}` | `cancionActivaId` pasa de vacío a tener valor → avisa a todo el equipo que arrancó la transmisión. |
 | `onSetlistEscrito` | `onDocumentWritten` en la misma ruta | Setlist nuevo o cambiado → avisa a todo el equipo. Si solo cambió el cantante asignado a una entrada existente, avisa solo a esa persona. |
 | `onMiembroSeUnioAlEquipo` | `onDocumentUpdated` en `equipos/{equipoId}/miembros/{miembroId}` | `uid` pasa de `null` a tener valor (alguien reclamó el perfil) → avisa al resto del equipo. |
 | `recordatorioAntesDelServicio` | `onSchedule`, cada 15 minutos | `collectionGroup('actividades')` busca en todos los equipos las que empiezan dentro de la próxima hora, y avisa una sola vez por actividad (`recordatoriosEnviados`). |
 
-Todas mandan el push a través de `tokensDelEquipo(equipoId)`, que lee
-`fcmToken` de cada `Miembro` de ese equipo puntual — nunca cruza equipos.
+Las cuatro de notificaciones mandan el push a través de
+`tokensDelEquipo(equipoId)`, que lee `fcmToken` de cada `Miembro` de ese
+equipo puntual — nunca cruza equipos.
 
 **Rate limit**: como cualquier integrante autenticado puede escribir en
 `actividades` (lo necesita el líder para armar un setlist), nada impide

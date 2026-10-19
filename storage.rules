@@ -1,16 +1,38 @@
 rules_version = '2';
 
-// Foto de perfil — ver FotoPerfilService. Un archivo por persona
-// (perfiles/<uid>/foto.jpg): cualquiera logueado la puede ver (aparece en
-// Mi equipo, En vivo, etc.), pero solo el dueño de esa cuenta puede
-// subir/reemplazar la suya. El `uid` es un segmento propio (no
-// "<uid>.jpg" pegado): un wildcard no puede compartir segmento con un
-// sufijo literal en las reglas de Storage.
 service firebase.storage {
   match /b/{bucket}/o {
+    // Foto de perfil — ver FotoPerfilService. Un archivo por persona
+    // (perfiles/<uid>/foto.jpg): cualquiera logueado la puede ver (aparece
+    // en Mi equipo, En vivo, etc.), pero solo el dueño de esa cuenta puede
+    // subir/reemplazar la suya. El `uid` es un segmento propio (no
+    // "<uid>.jpg" pegado): un wildcard no puede compartir segmento con un
+    // sufijo literal en las reglas de Storage.
+    //
+    // Tamaño/tipo agregados en la auditoría de seguridad (2026-10-17):
+    // antes cualquier autenticado podía subir un archivo de cualquier
+    // tamaño o tipo a su propia ruta — sin límite, alguien podía subir
+    // un archivo gigante (costo de almacenamiento) o algo que no fuera
+    // una imagen (`FotoPerfilService` lo trata como imagen de todos
+    // modos, mostrándolo roto en la UI).
     match /perfiles/{uid}/{archivo} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null && request.auth.uid == uid
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Imagen adjunta a un reporte de falla desde la landing (sin login:
+    // la landing no tiene ningún concepto de cuenta) — ver
+    // docs/SEGURIDAD.md para el resto del diseño de este formulario.
+    // Solo escritura, nunca lectura ni reemplazo: cada reporte sube a su
+    // propio `reporteId` (generado por Firestore al crear el documento
+    // del reporte), así que no hay forma de pisar el archivo de otro
+    // reporte ni de listar/leer lo que subieron otros.
+    match /reportes/{reporteId}/{archivo} {
+      allow read, delete: if false;
+      allow write: if request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
     }
   }
 }
