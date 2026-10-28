@@ -380,47 +380,31 @@ campos completos y reglas, consulta [docs/API.md](docs/API.md) y
 ## Estructura del repositorio
 
 ```mermaid
-mindmap
-  root((Unísono))
-  android/
-    Proyecto nativo Android
-  ios/
-    Proyecto nativo iOS
-  assets/icon/
-    Iconos de la aplicación
-  docs/
-    docs/assets/ plan de capturas
-    API.md colecciones y Cloud Functions
-    ARCHITECTURE.md arquitectura
-    ESTILO_DE_CODIGO.md convenciones
-    SEGURIDAD.md reglas y límites
-  functions/
-    Cloud Functions para Firebase
-  landing/
-    React y Vite
-  lib/
-    core/
-      Firestore, temas y utilidades
-    models/
-      Modelos de dominio y ChordPro
-    repositories/
-      Acceso a datos del equipo
-    screens/
-      Acceso, repertorio, actividades y en vivo
-    services/
-      Firebase, ChordPro y Nearby
-    widgets/
-      Componentes visuales reutilizables
-  packages/
-    Fork local de Nearby Connections
-  test/
-    Pruebas Dart y Flutter
-  firestore.rules
-    Reglas de Cloud Firestore
-  storage.rules
-    Reglas de Firebase Storage
-  pubspec.yaml y pubspec.lock
-    Dependencias y versiones resueltas
+flowchart TD
+    Root["Unísono · raíz del repositorio"]
+    Root --> Android["android/ · proyecto nativo Android"]
+    Root --> IOS["ios/ · proyecto nativo iOS"]
+    Root --> Assets["assets/icon/ · iconos"]
+    Root --> Docs["docs/ · documentación"]
+    Root --> Functions["functions/ · Cloud Functions"]
+    Root --> Landing["landing/ · React y Vite"]
+    Root --> Lib["lib/ · aplicación Flutter"]
+    Root --> Packages["packages/ · fork local de Nearby"]
+    Root --> Tests["test/ · pruebas Dart y Flutter"]
+    Root --> FirestoreRules["firestore.rules"]
+    Root --> StorageRules["storage.rules"]
+    Root --> Pubspec["pubspec.yaml y pubspec.lock"]
+    Docs --> DocsAssets["assets/ · plan de capturas"]
+    Docs --> API["API.md · datos y Cloud Functions"]
+    Docs --> Architecture["ARCHITECTURE.md · arquitectura"]
+    Docs --> Style["ESTILO_DE_CODIGO.md · convenciones"]
+    Docs --> Security["SEGURIDAD.md · reglas y límites"]
+    Lib --> Core["core/ · Firestore, temas y utilidades"]
+    Lib --> Models["models/ · dominio y ChordPro"]
+    Lib --> Repositories["repositories/ · datos del equipo"]
+    Lib --> Screens["screens/ · acceso, contenido y actividades"]
+    Lib --> Services["services/ · Firebase, ChordPro y Nearby"]
+    Lib --> Widgets["widgets/ · componentes reutilizables"]
 ```
 
 ## Instalación y configuración
