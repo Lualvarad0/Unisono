@@ -158,7 +158,7 @@ Future<void> _guardar() async {
 > esto.
 
 `packages/flutter_nearby_connections_plus/` (copia local parcheada de un
-paquete de terceros, ver [README](../README.md#sincronización-en-vivo-p2p-prototipo))
+paquete de terceros, ver [README](../README.md#probar-sincronización-local-con-2-o-más-teléfonos))
 está excluido del análisis — no es código propio, no tiene sentido
 aplicarle las reglas de lint del proyecto.
 

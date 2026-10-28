@@ -2,9 +2,10 @@
 
 Unísono no tiene una API HTTP propia: el cliente Flutter habla directo
 con Firebase (Firestore, Auth, Storage, Cloud Messaging) a través de los
-SDKs oficiales. La única pieza de backend propia son las **Cloud
-Functions** de `functions/`, y esas son *triggers* — código que corre
-solo cuando algo cambia en Firestore, no endpoints que se llaman a mano.
+SDKs oficiales. La pieza de backend propia son las **Cloud Functions**
+de `functions/`: hay una callable que el cliente invoca para buscar un
+equipo por código y funciones disparadas por eventos de Firestore o por
+el scheduler. No hay endpoints `onRequest` propios.
 
 Esta guía documenta esa superficie: el modelo de datos en Firestore, cómo
 el código Dart lo accede, y qué hace cada Cloud Function.
@@ -28,6 +29,7 @@ equipos/{equipoId}/miembros/{miembroId} → Miembro
 
 usuarioEquipo/{uid}                     → { equipoId, miembroId }
 rateLimitsAvisos/{clave}                → interno, Cloud Functions (ver abajo)
+rateLimitsIntentos/{uid}                → interno, Cloud Functions (búsqueda por código)
 recordatoriosEnviados/{equipoId_actividadId} → interno, Cloud Functions
 ```
 
@@ -86,9 +88,9 @@ es la única implementación real, y le basta con recibir el
 `CollectionReference<T>` ya tipado — Ritmo, Artista, Canción, Actividad,
 Nota, Ejercicio y Miembro la extienden sin repetir las cinco operaciones.
 `watchAll()` es la forma "normal" de leer para pantallas reactivas:
-Firestore ya trae caché offline persistente, así que ese stream emite
-primero desde el disco del celular si no hay red, sin que la UI tenga
-que distinguir online de offline.
+Firestore ya trae caché offline persistente, así que ese stream puede
+emitir datos del disco del celular si no hay red y esos documentos ya
+están en caché, sin que la UI tenga que distinguir online de offline.
 
 Las subcolecciones de un equipo se arman con
 [`coleccionDeEquipo(equipoId, nombre)`](../lib/core/firestore/equipo_collections.dart),
