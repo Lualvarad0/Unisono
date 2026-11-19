@@ -74,6 +74,7 @@ y el [roadmap de issues](#roadmap-e-issues-abiertos).
 |---|---|---|
 | Cuenta con correo y contraseña; crear equipo o unirse con código | Todas las personas | ✅ Implementado con Firebase Auth y Firestore |
 | Repertorio con letra, acordes, tonalidad, ritmo, artista y etiquetas | Equipo | ✅ Implementado; parser y transposición ChordPro |
+| Importar letra y acordes desde una URL de lacuerda.net | Líder | ✅ Implementado ([#26](https://github.com/Lualvarad0/Unisono/issues/26)); solo `acordes.lacuerda.net`, siempre se revisa antes de guardar |
 | Actividades, setlists ordenados, cantante y tono por canción | Equipo | ✅ Implementado |
 | Vista en vivo que muestra canción y sección activa en dispositivos del equipo | Líder, músicos y cantantes | ✅ Implementado mediante streams de Firestore cuando hay conexión |
 | Lectura de datos previamente descargados sin internet | Equipo ya autenticado | ✅ Caché persistente de Firestore; depende de que el contenido esté en el dispositivo |
@@ -81,7 +82,7 @@ y el [roadmap de issues](#roadmap-e-issues-abiertos).
 | Notificaciones de actividad, setlist, asignación e integrantes; recordatorio | Equipo | ✅ Cliente y Cloud Functions implementados; requieren Firebase configurado y despliegue |
 | Notas personales o compartidas y consignas de práctica | Equipo | ✅ Implementado |
 | Perfil, foto y preferencias de lectura/apariencia | Cada persona | ✅ Implementado |
-| Favoritos personales, búsqueda avanzada, filtros/duplicación de actividades | Equipo | 📅 Planeado en [#5–#9](https://github.com/Lualvarad0/Unisono/issues/5) |
+| Favoritos personales, búsqueda avanzada, filtros/duplicación de actividades | Equipo | ✅ Implementado ([#5–#9](https://github.com/Lualvarad0/Unisono/issues/5)) |
 
 ### Roles que reconoce el modelo
 
@@ -333,6 +334,17 @@ marcador legible; el valor real se guarda como `Timestamp`.
   }
 }
 ```
+
+`contenidoChordPro` se puede escribir a mano (editor simple o pegando
+un archivo ChordPro) o traerlo importado desde una URL de
+`acordes.lacuerda.net` (issue [#26](https://github.com/Lualvarad0/Unisono/issues/26),
+botón "Importar desde lacuerda.net" en Nueva alabanza, solo visible
+para el líder): la Cloud Function `importarCancionLacuerda` descarga
+esa página del lado del servidor y la convierte, pero nunca guarda
+nada sola — el líder siempre revisa título, tono y letra en el
+formulario antes de tocar "Guardar". Soporta solo ese dominio por
+ahora; otros sitios de acordes quedan para un issue aparte si hace
+falta.
 
 ```json
 {
@@ -614,10 +626,15 @@ Pruebas que existen actualmente:
 - `test/models/estado_en_vivo_local_test.dart`: protocolo del estado en
   vivo — serialización JSON y la regla de secuencia/sesión que descarta
   duplicados y mensajes atrasados (ver [#11](https://github.com/Lualvarad0/Unisono/issues/11)).
+- `functions/test/lacuerda.test.js` (`npm test` dentro de `functions/`,
+  runner nativo de Node): el parser de `acordes.lacuerda.net` a
+  ChordPro — título/artista/tono, fusión de acordes con la letra,
+  etiquetas de sección y páginas sin el bloque esperado (ver
+  [#26](https://github.com/Lualvarad0/Unisono/issues/26)). Corre contra
+  fixtures con letra inventada, no contra lacuerda.net real.
 
-No hay pruebas de integración de Firebase, reglas, notificaciones ni
-Nearby; tampoco pruebas de sincronización multi-dispositivo
-automatizadas.
+No hay pruebas de integración de Firebase ni de `firestore.rules`
+contra el emulador (ver [#12](https://github.com/Lualvarad0/Unisono/issues/12)).
 
 GitHub Actions está en `.github/workflows/`:
 

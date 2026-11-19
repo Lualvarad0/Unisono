@@ -4,6 +4,7 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
+const { parseLacuerdaHtml } = require("./lacuerda");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -292,5 +293,101 @@ exports.recordatorioAntesDelServicio = onSchedule("every 15 minutes", async () =
       .collection("recordatoriosEnviados")
       .doc(clave)
       .set({ enviadoEn: admin.firestore.FieldValue.serverTimestamp() });
+  }
+});
+
+/**
+ * Mismo chequeo que `esLiderDeEquipo` de `firestore.rules`, pero del
+ * lado de la función: no alcanza con las reglas porque esta función no
+ * escribe en `canciones` (eso lo sigue haciendo el cliente, con los
+ * datos ya revisados por el líder) — es la función la que tiene que
+ * decidir si deja o no importar.
+ */
+async function esLiderDeEquipo(uid) {
+  const usuarioEquipo = await db.collection("usuarioEquipo").doc(uid).get();
+  if (!usuarioEquipo.exists) return false;
+  const { equipoId, miembroId } = usuarioEquipo.data();
+  if (!equipoId || !miembroId) return false;
+  const miembro = await db
+    .collection("equipos")
+    .doc(equipoId)
+    .collection("miembros")
+    .doc(miembroId)
+    .get();
+  return miembro.exists && (miembro.data().roles || []).includes("lider");
+}
+
+/**
+ * Importa letra + acordes desde una página de acordes.lacuerda.net
+ * (issue #26) — descarga el HTML del lado del servidor (evita CORS en
+ * el cliente y no mete un scraper en la app) y lo convierte a los
+ * campos de `Cancion` con `parseLacuerdaHtml`. Devuelve los datos para
+ * que el líder los revise en el formulario; nunca guarda nada sola.
+ *
+ * Solo el líder del equipo puede llamarla — no por ser un dato
+ * sensible (`canciones` ya es de lectura/escritura para todo el
+ * equipo), sino para que la decisión de qué URL de terceros se trae
+ * al repertorio quede en una sola persona por equipo.
+ */
+exports.importarCancionLacuerda = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Hace falta estar logueado.");
+  }
+
+  const permitido = await intentosPermitidos(`importarLacuerda_${request.auth.uid}`, {
+    maxIntentos: 20,
+    ventanaMs: 10 * 60 * 1000,
+  });
+  if (!permitido) {
+    throw new HttpsError(
+      "resource-exhausted",
+      "Demasiados intentos — esperá un momento y probá de nuevo.",
+    );
+  }
+
+  if (!(await esLiderDeEquipo(request.auth.uid))) {
+    throw new HttpsError("permission-denied", "Solo el líder del equipo puede importar canciones.");
+  }
+
+  const urlCruda = request.data?.url;
+  if (typeof urlCruda !== "string" || urlCruda.trim() === "") {
+    throw new HttpsError("invalid-argument", "Falta la URL de la canción.");
+  }
+  let url;
+  try {
+    url = new URL(urlCruda.trim());
+  } catch {
+    throw new HttpsError("invalid-argument", "Esa URL no es válida.");
+  }
+  if (url.protocol !== "https:" || url.hostname !== "acordes.lacuerda.net") {
+    throw new HttpsError(
+      "invalid-argument",
+      "Por ahora solo se puede importar desde acordes.lacuerda.net.",
+    );
+  }
+
+  let html;
+  try {
+    const respuesta = await fetch(url, {
+      signal: AbortSignal.timeout(10_000),
+      headers: { "User-Agent": "UnisonoApp/1.0 (+https://github.com/Lualvarad0/Unisono)" },
+    });
+    if (!respuesta.ok) {
+      throw new HttpsError("not-found", "No se pudo abrir esa página (puede ya no existir).");
+    }
+    html = await respuesta.text();
+  } catch (error) {
+    if (error instanceof HttpsError) throw error;
+    logger.warn("Fallo al descargar canción de lacuerda.net", error);
+    throw new HttpsError("unavailable", "No se pudo descargar esa página — probá de nuevo en un rato.");
+  }
+  if (html.length > 2_000_000) {
+    throw new HttpsError("invalid-argument", "Esa página es demasiado grande para importarla.");
+  }
+
+  try {
+    return parseLacuerdaHtml(html);
+  } catch (error) {
+    throw new HttpsError("invalid-argument", error.message);
   }
 });

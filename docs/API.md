@@ -134,13 +134,14 @@ existen los providers a nivel de cuenta (`AutenticacionService`,
 
 Código en [`functions/index.js`](../functions/index.js), Node 24,
 desplegadas con `firebase deploy --only functions`. Cuatro son
-*triggers* sobre escrituras de Firestore o un *scheduler*; una es
+*triggers* sobre escrituras de Firestore o un *scheduler*; dos son
 *callable* (`onCall`, el cliente la invoca directo por su nombre, sin
 necesitar un trigger de Firestore).
 
 | Función | Dispara con | Qué hace |
 |---|---|---|
 | `buscarEquipoPorCodigo` | `onCall`, la llama `EquipoRepository.buscarPorCodigo` (Dart) | Busca un equipo por su código de 6 caracteres **del lado del servidor** — ver [docs/SEGURIDAD.md § Auditoría 2026-10-17](SEGURIDAD.md#auditoría-2026-10-17) para por qué no es una query directa del cliente. Rate limit de 20 intentos / 5 min por cuenta. |
+| `importarCancionLacuerda` | `onCall`, la llama `ImportarLacuerdaService.importarDesdeUrl` (Dart) | Issue [#26](https://github.com/Lualvarad0/Unisono/issues/26): descarga una página de `acordes.lacuerda.net` del lado del servidor y la convierte a título/artista/tono/ChordPro con `functions/lacuerda.js` — el cliente nunca scrapea ni guarda nada solo, siempre se revisa en el formulario antes de "Guardar". Solo el líder del equipo puede llamarla (chequeo propio de la función, no de `firestore.rules`). Rate limit de 20 intentos / 10 min por cuenta. |
 | `onModoEnVivoIniciado` | `onDocumentUpdated` en `equipos/{equipoId}/actividades/{actividadId}` | `cancionActivaId` pasa de vacío a tener valor → avisa a todo el equipo que arrancó la transmisión. |
 | `onSetlistEscrito` | `onDocumentWritten` en la misma ruta | Setlist nuevo o cambiado → avisa a todo el equipo. Si solo cambió el cantante asignado a una entrada existente, avisa solo a esa persona. |
 | `onMiembroSeUnioAlEquipo` | `onDocumentUpdated` en `equipos/{equipoId}/miembros/{miembroId}` | `uid` pasa de `null` a tener valor (alguien reclamó el perfil) → avisa al resto del equipo. |
