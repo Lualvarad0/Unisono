@@ -11,6 +11,7 @@ import 'package:app_alabanzas/models/cancion.dart';
 import 'package:app_alabanzas/screens/actividades/actividad_utils.dart';
 import 'package:app_alabanzas/screens/actividades/detalle_actividad_screen.dart';
 import 'package:app_alabanzas/screens/contenido/agregar_alabanza_screen.dart';
+import 'package:app_alabanzas/screens/contenido/cancion_utils.dart';
 import 'package:app_alabanzas/screens/contenido/detalle_alabanza_screen.dart';
 import 'package:app_alabanzas/screens/contenido/repertorio_screen.dart';
 import 'package:app_alabanzas/screens/ejercicios/ejercicios_screen.dart';
@@ -103,9 +104,12 @@ class HomeScreen extends StatelessWidget {
               StreamBuilder<List<Cancion>>(
                 stream: context.read<Repositorio<Cancion>>().watchAll(),
                 builder: (context, snapshot) {
-                  final sincronizado = snapshot.connectionState != ConnectionState.waiting;
+                  final sincronizado =
+                      snapshot.connectionState != ConnectionState.waiting;
                   return _IndicadorEstado(
-                    color: sincronizado ? AppTheme.exito : tema.colorScheme.onSurfaceVariant,
+                    color: sincronizado
+                        ? AppTheme.exito
+                        : tema.colorScheme.onSurfaceVariant,
                     texto: sincronizado
                         ? 'Repertorio sincronizado'
                         : 'Sincronizando repertorio...',
@@ -194,11 +198,8 @@ class HomeScreen extends StatelessWidget {
                       ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
                 );
               }
-              // TODO(recientes): esto muestra las primeras 3 tal cual las
-              // devuelve Firestore, no las últimas agregadas/tocadas de
-              // verdad — Cancion todavía no guarda una fecha para ordenar
-              // por eso.
-              final destacadas = canciones.take(3).toList();
+              final destacadas =
+                  ordenarPorRecientes(canciones).take(3).toList();
               return Column(
                 children: [
                   for (final cancion in destacadas)
@@ -228,9 +229,8 @@ class _CalendarioDashboard extends StatelessWidget {
     DateTime dia,
     List<Actividad> actividades,
   ) {
-    final delDia =
-        actividades.where((a) => _mismoDia(a.fecha, dia)).toList()
-          ..sort((a, b) => a.fecha.compareTo(b.fecha));
+    final delDia = actividades.where((a) => _mismoDia(a.fecha, dia)).toList()
+      ..sort((a, b) => a.fecha.compareTo(b.fecha));
     if (delDia.isEmpty) return;
     if (delDia.length == 1) {
       Navigator.of(context).push(
@@ -277,7 +277,8 @@ class _CalendarioDashboard extends StatelessWidget {
       builder: (context, snapshot) {
         final actividades = snapshot.data ?? const <Actividad>[];
         final diasConActividad = {
-          for (final a in actividades) DateTime(a.fecha.year, a.fecha.month, a.fecha.day),
+          for (final a in actividades)
+            DateTime(a.fecha.year, a.fecha.month, a.fecha.day),
         };
         return CalendarioMensual(
           diasConActividad: diasConActividad,
