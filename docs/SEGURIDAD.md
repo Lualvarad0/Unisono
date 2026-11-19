@@ -149,6 +149,30 @@ Cada subcolección de contenido (`ritmos`, `artistas`, `canciones`,
 escribiendo — así que estar logueado no alcanza para ver el contenido de
 otro equipo, hace falta además pertenecer a ese equipo puntual.
 
+### `favoritas`: personal, no de equipo
+
+A diferencia de todo lo de arriba (compartido por todo el equipo),
+`favoritas` vive en `equipos/{equipoId}/favoritas/{uid}/canciones/{id}`
+— el `{uid}` intermedio deja que la regla exija además
+`request.auth.uid == uid`:
+
+```
+match /favoritas/{uid} {
+  match /canciones/{cancionId} {
+    allow read, write: if request.auth != null
+      && request.auth.uid == uid
+      && equipoDeUsuario() == equipoId;
+  }
+}
+```
+
+Ni un compañero del mismo equipo puede leer o escribir las favoritas de
+otro uid, aunque conozca el `equipoId` — `equipoDeUsuario() == equipoId`
+solo evita que alguien escriba una favorita "huérfana" bajo un equipo al
+que no pertenece, no es lo que protege la privacidad acá (eso lo hace
+`request.auth.uid == uid` solo). Historia: "Agregar alabanzas favoritas
+personales".
+
 ### La lección de las reglas OR (importante, ya nos pasó dos veces)
 
 > [!IMPORTANT]

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:app_alabanzas/core/firestore/repositorio.dart';
+import 'package:app_alabanzas/core/theme/app_theme.dart';
 import 'package:app_alabanzas/models/nota.dart';
 import 'package:app_alabanzas/models/ritmo.dart';
+import 'package:app_alabanzas/repositories/favorita_repository.dart';
 import 'package:app_alabanzas/repositories/nota_repository.dart';
 import 'package:app_alabanzas/screens/notas/agregar_nota_screen.dart';
 import 'package:app_alabanzas/models/cancion.dart';
@@ -43,10 +45,8 @@ class _DetalleAlabanzaScreenState extends State<DetalleAlabanzaScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: StreamBuilder<Cancion?>(
-        stream: context
-            .read<Repositorio<Cancion>>()
-            .watchAll()
-            .map((lista) => lista.where((c) => c.id == widget.cancionId).firstOrNull),
+        stream: context.read<Repositorio<Cancion>>().watchAll().map((lista) =>
+            lista.where((c) => c.id == widget.cancionId).firstOrNull),
         builder: (context, snapshot) {
           final cancion = snapshot.data;
           if (cancion == null) {
@@ -78,6 +78,35 @@ class _DetalleAlabanzaScreenState extends State<DetalleAlabanzaScreen> {
 
 extension<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
+}
+
+/// Estrella para marcar/desmarcar esta Cancion como favorita — mismo
+/// recorte "Favoritas" que `RepertorioScreen`, ver `FavoritaRepository`.
+class _AccionFavorita extends StatelessWidget {
+  const _AccionFavorita({required this.cancionId});
+
+  final String cancionId;
+
+  @override
+  Widget build(BuildContext context) {
+    final repositorio = context.read<FavoritaRepository>();
+    return StreamBuilder<Set<String>>(
+      stream: repositorio.watchIds(),
+      builder: (context, snapshot) {
+        final esFavorita = snapshot.data?.contains(cancionId) ?? false;
+        return IconButton(
+          icon: Icon(
+            esFavorita ? Icons.star_rounded : Icons.star_border_rounded,
+            color: esFavorita ? AppTheme.acento : null,
+          ),
+          tooltip: esFavorita ? 'Quitar de favoritas' : 'Marcar favorita',
+          onPressed: () => esFavorita
+              ? repositorio.desmarcar(cancionId)
+              : repositorio.marcar(cancionId),
+        );
+      },
+    );
+  }
 }
 
 class _Contenido extends StatelessWidget {
@@ -112,12 +141,14 @@ class _Contenido extends StatelessWidget {
           title: Text(cancion.titulo),
           floating: true,
           actions: [
+            _AccionFavorita(cancionId: cancion.id),
             IconButton(
               icon: const Icon(Icons.edit_outlined),
               tooltip: 'Editar alabanza',
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => AgregarAlabanzaScreen(cancionExistente: cancion),
+                  builder: (_) =>
+                      AgregarAlabanzaScreen(cancionExistente: cancion),
                 ),
               ),
             ),
@@ -139,7 +170,8 @@ class _Contenido extends StatelessWidget {
                         style: tema.textTheme.bodyMedium
                             ?.copyWith(fontWeight: FontWeight.w600)),
                     if (cancion.bpm != null)
-                      Text('${cancion.bpm} BPM', style: tema.textTheme.bodyMedium),
+                      Text('${cancion.bpm} BPM',
+                          style: tema.textTheme.bodyMedium),
                     if (cancion.compas != null)
                       Text(cancion.compas!, style: tema.textTheme.bodyMedium),
                     if (genero != null)
@@ -155,8 +187,8 @@ class _Contenido extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('Tonalidad',
-                        style: tema.textTheme.labelLarge
-                            ?.copyWith(color: tema.colorScheme.onSurfaceVariant)),
+                        style: tema.textTheme.labelLarge?.copyWith(
+                            color: tema.colorScheme.onSurfaceVariant)),
                     SelectorTonalidad(
                       tono: tonoActual,
                       onBajar: onBajarTono,
@@ -247,7 +279,8 @@ class _SeccionWidget extends StatelessWidget {
             ],
           ),
           for (final linea in seccion.lineas) LineaChordProWidget(linea: linea),
-          _NotasDeSeccion(cancionId: cancionId, seccionEtiqueta: seccion.etiqueta),
+          _NotasDeSeccion(
+              cancionId: cancionId, seccionEtiqueta: seccion.etiqueta),
         ],
       ),
     );
@@ -255,7 +288,8 @@ class _SeccionWidget extends StatelessWidget {
 }
 
 class _NotasDeSeccion extends StatelessWidget {
-  const _NotasDeSeccion({required this.cancionId, required this.seccionEtiqueta});
+  const _NotasDeSeccion(
+      {required this.cancionId, required this.seccionEtiqueta});
 
   final String cancionId;
   final String seccionEtiqueta;
@@ -266,7 +300,8 @@ class _NotasDeSeccion extends StatelessWidget {
       stream: context.read<NotaRepository>().watchAll(),
       builder: (context, snapshot) {
         final notas = (snapshot.data ?? const <Nota>[]).where(
-          (n) => n.cancionId == cancionId && n.seccionEtiqueta == seccionEtiqueta,
+          (n) =>
+              n.cancionId == cancionId && n.seccionEtiqueta == seccionEtiqueta,
         );
         if (notas.isEmpty) return const SizedBox.shrink();
         final tema = Theme.of(context);
@@ -278,7 +313,8 @@ class _NotasDeSeccion extends StatelessWidget {
               for (final nota in notas)
                 Container(
                   margin: const EdgeInsets.only(top: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
                     color: tema.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(8),
