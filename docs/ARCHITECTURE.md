@@ -242,8 +242,12 @@ rol líder (sin validar contra el emulador).
 Las pruebas Dart/Flutter actuales están en `test/`; cubren acordes,
 parser ChordPro, editor simple, el protocolo/servicio del modo en vivo
 local (`EstadoEnVivoLocal`, `ConexionLocalService`), el aviso de
-contenido faltante sin conexión, y un widget placeholder. No hay tests
-de Firebase, reglas, Cloud Functions ni del plugin Nearby en sí.
-Los workflows de CI ejecutan `flutter analyze` y `flutter test`; la
-prueba en teléfonos reales está en el alcance del issue
-[#14](https://github.com/Lualvarad0/Unisono/issues/14).
+contenido faltante sin conexión, y un widget placeholder.
+`test/integration/en_vivo_transporte_simulado_test.dart` liga varias
+instancias de `ConexionLocalService` con un transporte simulado (sin
+plugin ni radio) para probar el flujo de líder/seguidores de punta a
+punta — pero ninguna de estas pruebas cubre el plugin Nearby en sí
+(descubrimiento, permisos, el canal real). Tampoco hay tests de
+Firebase, reglas ni Cloud Functions. Los workflows de CI ejecutan
+`flutter analyze` y `flutter test`; la validación en teléfonos físicos
+reales sigue pendiente — [#14](https://github.com/Lualvarad0/Unisono/issues/14).

@@ -532,11 +532,15 @@ proyecto aparte y no es la aplicación móvil.
 ([#11](https://github.com/Lualvarad0/Unisono/issues/11)), la conducción
 local-first del líder ([#12](https://github.com/Lualvarad0/Unisono/issues/12))
 y la recuperación de seguidores al reconectar
-([#13](https://github.com/Lualvarad0/Unisono/issues/13)) ya están hechos;
-la prueba real en dispositivos sigue abierta en
-[#14](https://github.com/Lualvarad0/Unisono/issues/14). La prueba manual
-de abajo sirve para observar el comportamiento actual y aportar
-validación real, además de lo que ya cubren los tests unitarios.
+([#13](https://github.com/Lualvarad0/Unisono/issues/13)) ya están hechos,
+con tests unitarios y de integración con transporte simulado (ver
+[#14](https://github.com/Lualvarad0/Unisono/issues/14)). **Lo que falta
+de #14 es la validación en dispositivos físicos reales** — esos tests
+no pueden probar el plugin Nearby en sí (descubrimiento, permisos,
+radio). La prueba manual de abajo es justamente esa validación: hace
+falta correrla en Android real y registrar el resultado (modelos,
+sistema operativo, qué pasó) como comentario en el issue #14 antes de
+poder cerrarlo.
 
 ### Protocolo del estado en vivo (Nearby)
 
@@ -652,18 +656,23 @@ Pruebas que existen actualmente:
   mensaje atrasado/malformado no pisa el estado vigente y
   `calcularEstadoConexion` resuelve `desconectado`/`reconectando`/
   `recibiendo` según corresponda (ver
-  [#13](https://github.com/Lualvarad0/Unisono/issues/13)). No cubre el
-  plugin Nearby en sí (`ConexionLocalService.iniciar`, el reenvío real
-  de snapshot a un dispositivo que conecta) — eso necesita dispositivos
-  reales, ver más abajo, o el transporte simulado de
-  [#14](https://github.com/Lualvarad0/Unisono/issues/14).
+  [#13](https://github.com/Lualvarad0/Unisono/issues/13)).
 - `test/screens/en_vivo/preparacion_offline_utils_test.dart`: detecta
   canciones del setlist que no están disponibles en el caché local (ver
   [#13](https://github.com/Lualvarad0/Unisono/issues/13)).
+- `test/integration/en_vivo_transporte_simulado_test.dart`: liga varias
+  instancias de `ConexionLocalService` (un líder, uno o más seguidores)
+  con un transporte simulado en el propio test — en vez de Nearby de
+  verdad, reenvía a mano el JSON que produce `transmitir`/`comoSnapshot`
+  — para probar el flujo completo (canción, sección, detener, orden,
+  descarte de atrasados, desconexión y reconexión con snapshot) sin
+  depender de radio ni de dispositivo físico (ver
+  [#14](https://github.com/Lualvarad0/Unisono/issues/14)).
 
-No hay pruebas de integración de Firebase, reglas, notificaciones ni
-Nearby; tampoco pruebas de sincronización multi-dispositivo
-automatizadas.
+Ninguna de estas pruebas cubre el plugin Nearby en sí (descubrimiento,
+permisos, el canal real de Bluetooth/Wi-Fi Direct) — eso solo se puede
+validar en dispositivos físicos, ver la sección anterior. Tampoco hay
+pruebas de integración de Firebase, reglas ni notificaciones.
 
 GitHub Actions está en `.github/workflows/`:
 
