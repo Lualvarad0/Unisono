@@ -26,6 +26,7 @@ equipos/{equipoId}/actividades/{id}     → Actividad (setlist embebido)
 equipos/{equipoId}/notas/{id}           → Nota
 equipos/{equipoId}/ejercicios/{id}      → Ejercicio
 equipos/{equipoId}/miembros/{miembroId} → Miembro
+equipos/{equipoId}/favoritas/{uid}/canciones/{cancionId} → Favorita (personal, ver abajo)
 
 usuarioEquipo/{uid}                     → { equipoId, miembroId }
 rateLimitsAvisos/{clave}                → interno, Cloud Functions (ver abajo)
@@ -58,7 +59,19 @@ WhatsApp) — ver `EquipoRepository.generarCodigoUnico`.
 | `notas/{id}` | `texto`, `compartida`, `autorUid`, `cancionId?`, `seccionEtiqueta?` | `compartida=false` → solo la ve quien la escribió. |
 | `ejercicios/{id}` | `titulo`, `descripcion`, `autorUid`, `cancionId?`, `seccionEtiqueta?`, `completadoPorUids[]` | Cada integrante se agrega a `completadoPorUids` por su cuenta. |
 | `miembros/{id}` | `nombre`, `apellido`, `roles[]`, `uid?`, `fechaNacimiento?`, `telefono?`, `instrumento?`, `nivelInstrumento?`, `fotoUrl?`, `fcmToken?` | `uid=null` = perfil invitado sin reclamar (ver [Seguridad](SEGURIDAD.md)). `roles` es una lista de `lider`/`musico`/`cantante` — alguien puede tener varios. |
+| `favoritas/{uid}/canciones/{cancionId}` | `agregadaEn?` | **Personal**, no de equipo — ver nota abajo. `id` del documento es el mismo `Cancion.id` marcado. |
 | `reportesDeFalla/{id}` | `mensaje`, `imagenUrl?`, `creadoEn` | Raíz, no dentro de un equipo. Lo escribe la landing (`landing/`, sin login) — ver [Seguridad](SEGURIDAD.md#reportes-de-falla-desde-la-landing-sin-login). Solo creación, nadie lo puede leer de vuelta desde el cliente. |
+
+> [!NOTE]
+> `favoritas` es la única subcolección de contenido que NO es
+> `allow read, write: if equipoDeUsuario() == equipoId` para cualquier
+> integrante — el `{uid}` intermedio en la ruta deja que la regla exija
+> además `request.auth.uid == uid`, así que ni un compañero del mismo
+> equipo puede leer o escribir las favoritas de otra persona (ver
+> [Seguridad § favoritas](SEGURIDAD.md#favoritas-personal-no-de-equipo)).
+> `FavoritaRepository` recibe `uid` además de `equipoId` en el
+> constructor por eso — los otros 7 repositorios de contenido no lo
+> necesitan.
 
 `SetlistEntry` (`cancionId`, `orden`, `cantanteId`, `tonoAsignado`) no es
 un documento propio: vive embebido en `Actividad.setlist` porque siempre

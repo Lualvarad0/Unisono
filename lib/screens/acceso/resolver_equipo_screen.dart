@@ -15,6 +15,7 @@ import 'package:app_alabanzas/repositories/artista_repository.dart';
 import 'package:app_alabanzas/repositories/cancion_repository.dart';
 import 'package:app_alabanzas/repositories/ejercicio_repository.dart';
 import 'package:app_alabanzas/repositories/equipo_repository.dart';
+import 'package:app_alabanzas/repositories/favorita_repository.dart';
 import 'package:app_alabanzas/repositories/miembro_repository.dart';
 import 'package:app_alabanzas/repositories/nota_repository.dart';
 import 'package:app_alabanzas/repositories/ritmo_repository.dart';
@@ -127,6 +128,12 @@ class _ProveedoresDeEquipo extends StatelessWidget {
             ),
             Provider<Repositorio<Ejercicio>>(
               create: (context) => context.read<EjercicioRepository>(),
+            ),
+            Provider<FavoritaRepository>(
+              create: (context) => FavoritaRepository(
+                equipoId: equipoId,
+                uid: context.read<AutenticacionService>().usuarioActual!.uid,
+              ),
             ),
           ],
           child: const PrincipalShellScreen(),
