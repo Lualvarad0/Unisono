@@ -429,7 +429,7 @@ flowchart TD
 | Dart | `pubspec.yaml` acepta `>=3.3.0 <4.0.0`; el lockfile actual declara `>=3.12.0` |
 | Java para Android en CI | Temurin `17` |
 | Node.js para Cloud Functions | `24`, declarado en `functions/package.json` |
-| Versión de la app | `0.1.0+1`, declarada en `pubspec.yaml` |
+| Versión de la app | `0.2.0+2`, declarada en `pubspec.yaml` |
 
 Las versiones exactas de paquetes Dart se resuelven en
 [`pubspec.lock`](pubspec.lock); `pubspec.yaml` declara rangos. Algunos
