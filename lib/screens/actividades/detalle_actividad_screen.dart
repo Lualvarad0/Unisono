@@ -112,7 +112,7 @@ class _Contenido extends StatelessWidget {
           title: Text(actividad.nombre),
           floating: true,
           actions: [
-            if (esLider)
+            if (esLider) ...[
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
                 tooltip: 'Editar actividad',
@@ -123,6 +123,17 @@ class _Contenido extends StatelessWidget {
                   ),
                 ),
               ),
+              IconButton(
+                icon: const Icon(Icons.content_copy_outlined),
+                tooltip: 'Duplicar actividad',
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        AgregarActividadScreen(duplicarDesde: actividad),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
         SliverToBoxAdapter(

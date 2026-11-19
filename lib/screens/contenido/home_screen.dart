@@ -16,6 +16,8 @@ import 'package:app_alabanzas/screens/contenido/repertorio_screen.dart';
 import 'package:app_alabanzas/screens/ejercicios/ejercicios_screen.dart';
 import 'package:app_alabanzas/screens/notas/mis_notas_screen.dart';
 import 'package:app_alabanzas/services/conectividad_service.dart';
+import 'package:app_alabanzas/widgets/calendario_mensual.dart';
+import 'package:app_alabanzas/widgets/encabezado_seccion.dart';
 
 /// Pantalla 6 del prototipo. Punto de entrada después de Acceso — resumen
 /// corto del repertorio y accesos directos a lo que se usa más seguido.
@@ -89,6 +91,10 @@ class HomeScreen extends StatelessWidget {
               );
             },
           ),
+          const SizedBox(height: 20),
+          const EncabezadoSeccion('CALENDARIO'),
+          const SizedBox(height: 12),
+          const _CalendarioDashboard(),
           const SizedBox(height: 20),
           const _TarjetaProximoServicio(),
           const SizedBox(height: 4),
@@ -203,6 +209,82 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Calendario mensual con las Actividades marcadas — da el panorama del
+/// mes de un vistazo, antes de la tarjeta de detalle del próximo
+/// servicio. Solo lectura, igual que el resto de Home: crear/editar
+/// actividades vive en la pestaña Setlists.
+class _CalendarioDashboard extends StatelessWidget {
+  const _CalendarioDashboard();
+
+  bool _mismoDia(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  void _mostrarActividadesDelDia(
+    BuildContext context,
+    DateTime dia,
+    List<Actividad> actividades,
+  ) {
+    final delDia =
+        actividades.where((a) => _mismoDia(a.fecha, dia)).toList()
+          ..sort((a, b) => a.fecha.compareTo(b.fecha));
+    if (delDia.isEmpty) return;
+    if (delDia.length == 1) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => DetalleActividadScreen(actividadId: delDia.first.id),
+        ),
+      );
+      return;
+    }
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (final actividad in delDia)
+              ListTile(
+                leading: const Icon(Icons.event_outlined),
+                title: Text(actividad.nombre),
+                subtitle: Text(
+                  '${TimeOfDay.fromDateTime(actividad.fecha).format(context)} · '
+                  '${actividad.setlist.length} alabanzas',
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          DetalleActividadScreen(actividadId: actividad.id),
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<Actividad>>(
+      stream: context.read<Repositorio<Actividad>>().watchAll(),
+      builder: (context, snapshot) {
+        final actividades = snapshot.data ?? const <Actividad>[];
+        final diasConActividad = {
+          for (final a in actividades) DateTime(a.fecha.year, a.fecha.month, a.fecha.day),
+        };
+        return CalendarioMensual(
+          diasConActividad: diasConActividad,
+          onDiaSeleccionado: (dia) =>
+              _mostrarActividadesDelDia(context, dia, actividades),
+        );
+      },
     );
   }
 }

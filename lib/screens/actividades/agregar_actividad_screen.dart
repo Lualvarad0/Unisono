@@ -8,19 +8,33 @@ import 'package:app_alabanzas/models/miembro.dart';
 import 'package:app_alabanzas/models/setlist_entry.dart';
 import 'package:app_alabanzas/repositories/actividad_repository.dart';
 import 'package:app_alabanzas/screens/actividades/actividad_utils.dart';
+import 'package:app_alabanzas/screens/actividades/detalle_actividad_screen.dart';
 import 'package:app_alabanzas/widgets/acciones_dialogo.dart';
 import 'package:app_alabanzas/widgets/encabezado_seccion.dart';
 import 'package:app_alabanzas/widgets/selector_tonalidad.dart';
 
-/// Crear o editar una Actividad: nombre, fecha/hora, y el setlist —
-/// canciones en orden, cada una con cantante y tono asignados para ese
-/// día puntual (no toca `Cancion.tonoOriginal`). `actividadExistente`
-/// nulo = crear; no nulo = editar esa misma, mismo patrón que
-/// `EditorSimpleScreen` con `contenidoInicial`.
+/// Crear, editar o duplicar una Actividad: nombre, fecha/hora, y el
+/// setlist — canciones en orden, cada una con cantante y tono asignados
+/// para ese día puntual (no toca `Cancion.tonoOriginal`).
+///
+/// `actividadExistente` nulo = crear; no nulo = editar esa misma, mismo
+/// patrón que `EditorSimpleScreen` con `contenidoInicial`.
+/// `duplicarDesde` precarga nombre/fecha/setlist a partir de otra
+/// Actividad, pero sigue siendo una creación: `actividadExistente` queda
+/// nulo, así que al guardar sale un documento nuevo e independiente,
+/// nunca se toca la original.
 class AgregarActividadScreen extends StatefulWidget {
-  const AgregarActividadScreen({super.key, this.actividadExistente});
+  const AgregarActividadScreen({
+    super.key,
+    this.actividadExistente,
+    this.duplicarDesde,
+  }) : assert(
+          actividadExistente == null || duplicarDesde == null,
+          'No se puede editar y duplicar al mismo tiempo.',
+        );
 
   final Actividad? actividadExistente;
+  final Actividad? duplicarDesde;
 
   @override
   State<AgregarActividadScreen> createState() => _AgregarActividadScreenState();
@@ -39,10 +53,29 @@ class _AgregarActividadScreenState extends State<AgregarActividadScreen> {
   void initState() {
     super.initState();
     final existente = widget.actividadExistente;
-    _nombreController.text = existente?.nombre ?? '';
-    _fecha = existente?.fecha ?? DateTime.now().add(const Duration(days: 1));
-    _entradas = [...?existente?.setlist];
+    final original = widget.duplicarDesde;
+    if (original != null) {
+      _nombreController.text = 'Copia de ${original.nombre}';
+      _fecha = _proximaFechaFutura(original.fecha);
+      _entradas = [...original.setlist];
+    } else {
+      _nombreController.text = existente?.nombre ?? '';
+      _fecha = existente?.fecha ?? DateTime.now().add(const Duration(days: 1));
+      _entradas = [...?existente?.setlist];
+    }
     _datosFuturo = _cargarDatos();
+  }
+
+  /// Misma hora/día de la semana que `fecha`, pero en el futuro — para que
+  /// la copia de una Actividad no arranque precargada con una fecha ya
+  /// pasada (el líder la termina de ajustar con `_elegirFecha` si hace
+  /// falta otro día puntual).
+  static DateTime _proximaFechaFutura(DateTime fecha) {
+    var propuesta = fecha;
+    while (!propuesta.isAfter(DateTime.now())) {
+      propuesta = propuesta.add(const Duration(days: 7));
+    }
+    return propuesta;
   }
 
   Future<_DatosFormulario> _cargarDatos() async {
@@ -119,15 +152,23 @@ class _AgregarActividadScreenState extends State<AgregarActividadScreen> {
     ];
     final existente = widget.actividadExistente;
     if (existente == null) {
-      await repositorio.crear(
+      final nuevoId = await repositorio.crear(
         Actividad(id: '', nombre: nombre, fecha: _fecha, setlist: setlistOrdenado),
       );
-    } else {
-      await repositorio.actualizar(
-        existente.id,
-        existente.copyWith(nombre: nombre, fecha: _fecha, setlist: setlistOrdenado),
+      if (!mounted) return;
+      // Reemplaza esta pantalla (no la apila) para que "atrás" desde el
+      // detalle nuevo vuelva a Setlists, no al formulario ya guardado.
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => DetalleActividadScreen(actividadId: nuevoId),
+        ),
       );
+      return;
     }
+    await repositorio.actualizar(
+      existente.id,
+      existente.copyWith(nombre: nombre, fecha: _fecha, setlist: setlistOrdenado),
+    );
     if (!mounted) return;
     Navigator.of(context).pop();
   }
@@ -136,10 +177,17 @@ class _AgregarActividadScreenState extends State<AgregarActividadScreen> {
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
     final editando = widget.actividadExistente != null;
+    final duplicando = widget.duplicarDesde != null;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(editando ? 'Editar actividad' : 'Nueva actividad'),
+        title: Text(
+          editando
+              ? 'Editar actividad'
+              : duplicando
+                  ? 'Duplicar actividad'
+                  : 'Nueva actividad',
+        ),
       ),
       body: FutureBuilder<_DatosFormulario>(
         future: _datosFuturo,
