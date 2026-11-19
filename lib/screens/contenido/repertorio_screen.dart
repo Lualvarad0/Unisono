@@ -137,109 +137,130 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
               final generos = [...snapshotGeneros.data ?? const <Ritmo>[]]
                 ..sort((a, b) => a.nombre.compareTo(b.nombre));
               final generosPorId = {for (final g in generos) g.id: g.nombre};
-              return Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-                    child: TextField(
-                      controller: _busquedaController,
-                      onChanged: (valor) =>
-                          setState(() => _busqueda = valor.trim()),
-                      decoration: const InputDecoration(
-                        hintText: 'Buscar alabanza...',
-                        prefixIcon: Icon(Icons.search),
+
+              // Antes de filtrar/buscar, no solo para agrupar — la
+              // búsqueda tiene que poder coincidir con el nombre del
+              // artista, así que `nombreArtista` hace falta más arriba
+              // que la lista ya filtrada de Cancion (ver más abajo).
+              return StreamBuilder<List<Artista>>(
+                stream: context.read<Repositorio<Artista>>().watchAll(),
+                builder: (context, snapshotArtistas) {
+                  final artistasPorId = {
+                    for (final a in snapshotArtistas.data ?? const <Artista>[])
+                      a.id: a.nombre,
+                  };
+                  String nombreArtista(Cancion c) => c.artistaId == null
+                      ? 'Varios'
+                      : (artistasPorId[c.artistaId] ?? 'Varios');
+
+                  return Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                        child: TextField(
+                          controller: _busquedaController,
+                          onChanged: (valor) =>
+                              setState(() => _busqueda = valor.trim()),
+                          decoration: const InputDecoration(
+                            hintText:
+                                'Buscar por título, artista o etiqueta...',
+                            prefixIcon: Icon(Icons.search),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  if (_busqueda.isEmpty && !_explorando)
-                    _EncabezadoFiltro(
-                      color: _soloFavoritas
-                          ? AppTheme.acento
-                          : (_generoFiltro != null
-                              ? colorDeGenero(generos, _generoFiltro!)
-                              : null),
-                      titulo: _soloFavoritas
-                          ? 'Favoritas'
-                          : (_soloSinGenero
-                              ? 'Sin género'
+                      if (_busqueda.isEmpty && !_explorando)
+                        _EncabezadoFiltro(
+                          color: _soloFavoritas
+                              ? AppTheme.acento
                               : (_generoFiltro != null
-                                  ? (generosPorId[_generoFiltro] ?? '')
-                                  : 'Todas las alabanzas')),
-                      onVolver: _volverAExplorar,
-                    ),
-                  Expanded(
-                    child: StreamBuilder<List<Cancion>>(
-                      stream: context.read<Repositorio<Cancion>>().watchAll(),
-                      builder: (context, snapshotCanciones) {
-                        if (!snapshotCanciones.hasData) {
-                          return const Center(
-                              child: CircularProgressIndicator());
-                        }
-                        final todas = snapshotCanciones.data!;
-
-                        if (_busqueda.isEmpty && _explorando) {
-                          return _ExplorarGeneros(
-                            generos: generos,
-                            canciones: todas,
-                            favoritosCount: favoritoIds.length,
-                            onElegirGenero: _elegirGenero,
-                            onElegirSinGenero: _elegirSinGenero,
-                            onElegirFavoritas: _elegirFavoritas,
-                            onVerTodas: _verTodas,
-                          );
-                        }
-
-                        var canciones = todas;
-                        if (_busqueda.isNotEmpty) {
-                          final termino = _busqueda.toLowerCase();
-                          canciones = canciones
-                              .where((c) =>
-                                  c.titulo.toLowerCase().contains(termino))
-                              .toList();
-                        }
-                        if (_soloFavoritas) {
-                          canciones = canciones
-                              .where((c) => favoritoIds.contains(c.id))
-                              .toList();
-                        } else if (_soloSinGenero) {
-                          canciones = canciones
-                              .where((c) => c.ritmoId == null)
-                              .toList();
-                        } else if (_generoFiltro != null) {
-                          canciones = canciones
-                              .where((c) => c.ritmoId == _generoFiltro)
-                              .toList();
-                        }
-                        if (canciones.isEmpty) {
-                          return Center(
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 32),
-                              child: Text(
-                                _soloFavoritas
-                                    ? 'Todavía no marcaste ninguna alabanza '
-                                        'como favorita. Tocá la estrella en '
-                                        'una canción para agregarla acá.'
-                                    : 'Ninguna alabanza coincide con el filtro.',
-                                textAlign: TextAlign.center,
-                                style: tema.textTheme.bodyMedium,
-                              ),
-                            ),
-                          );
-                        }
-                        return StreamBuilder<List<Artista>>(
+                                  ? colorDeGenero(generos, _generoFiltro!)
+                                  : null),
+                          titulo: _soloFavoritas
+                              ? 'Favoritas'
+                              : (_soloSinGenero
+                                  ? 'Sin género'
+                                  : (_generoFiltro != null
+                                      ? (generosPorId[_generoFiltro] ?? '')
+                                      : 'Todas las alabanzas')),
+                          onVolver: _volverAExplorar,
+                        ),
+                      Expanded(
+                        child: StreamBuilder<List<Cancion>>(
                           stream:
-                              context.read<Repositorio<Artista>>().watchAll(),
-                          builder: (context, snapshotArtistas) {
-                            final artistasPorId = {
-                              for (final a
-                                  in snapshotArtistas.data ?? const <Artista>[])
-                                a.id: a.nombre,
-                            };
-                            String nombreArtista(Cancion c) =>
-                                c.artistaId == null
-                                    ? 'Varios'
-                                    : (artistasPorId[c.artistaId] ?? 'Varios');
+                              context.read<Repositorio<Cancion>>().watchAll(),
+                          builder: (context, snapshotCanciones) {
+                            if (!snapshotCanciones.hasData) {
+                              return const Center(
+                                  child: CircularProgressIndicator());
+                            }
+                            final todas = snapshotCanciones.data!;
+
+                            if (_busqueda.isEmpty && _explorando) {
+                              return _ExplorarGeneros(
+                                generos: generos,
+                                canciones: todas,
+                                favoritosCount: favoritoIds.length,
+                                onElegirGenero: _elegirGenero,
+                                onElegirSinGenero: _elegirSinGenero,
+                                onElegirFavoritas: _elegirFavoritas,
+                                onVerTodas: _verTodas,
+                              );
+                            }
+
+                            var canciones = todas;
+                            if (_busqueda.isNotEmpty) {
+                              // Sin distinguir mayúsculas; el término ya
+                              // llega sin espacios al borde (ver
+                              // `onChanged`, arriba). Título, artista o
+                              // cualquier etiqueta alcanzan para
+                              // coincidir — no hace falta acordarse del
+                              // título exacto.
+                              final termino = _busqueda.toLowerCase();
+                              canciones = canciones.where((c) {
+                                if (c.titulo.toLowerCase().contains(termino)) {
+                                  return true;
+                                }
+                                if (nombreArtista(c)
+                                    .toLowerCase()
+                                    .contains(termino)) {
+                                  return true;
+                                }
+                                return c.etiquetas.any(
+                                    (e) => e.toLowerCase().contains(termino));
+                              }).toList();
+                            }
+                            if (_soloFavoritas) {
+                              canciones = canciones
+                                  .where((c) => favoritoIds.contains(c.id))
+                                  .toList();
+                            } else if (_soloSinGenero) {
+                              canciones = canciones
+                                  .where((c) => c.ritmoId == null)
+                                  .toList();
+                            } else if (_generoFiltro != null) {
+                              canciones = canciones
+                                  .where((c) => c.ritmoId == _generoFiltro)
+                                  .toList();
+                            }
+                            if (canciones.isEmpty) {
+                              return Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 32),
+                                  child: Text(
+                                    _soloFavoritas
+                                        ? 'Todavía no marcaste ninguna '
+                                            'alabanza como favorita. Tocá la '
+                                            'estrella en una canción para '
+                                            'agregarla acá.'
+                                        : 'Ninguna alabanza coincide con el '
+                                            'filtro.',
+                                    textAlign: TextAlign.center,
+                                    style: tema.textTheme.bodyMedium,
+                                  ),
+                                ),
+                              );
+                            }
 
                             final porArtista = <String, List<Cancion>>{};
                             for (final cancion in canciones) {
@@ -307,11 +328,11 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
                               ],
                             );
                           },
-                        );
-                      },
-                    ),
-                  ),
-                ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
               );
             },
           );
