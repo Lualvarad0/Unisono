@@ -37,9 +37,11 @@ está construida con Flutter y usa Firebase como backend.
 las funciones trabajen sin conexión.** Los datos que ya están en caché
 se pueden leer sin internet. Hay un canal de Nearby para transmitir el
 modo en vivo entre teléfonos cercanos; el líder ya conduce local-first
-(no espera a Firestore para avanzar), pero la recuperación automática
-de un seguidor que pierde la red y la validación en dispositivos reales
-siguen en desarrollo (issues [#13–#14](https://github.com/Lualvarad0/Unisono/issues/13)).
+(no espera a Firestore para avanzar), y un seguidor que pierde y
+recupera la red vuelve a quedar al día con el snapshot vigente sin
+reiniciar nada — ver [#13](https://github.com/Lualvarad0/Unisono/issues/13).
+La prueba multi-dispositivo real sigue en desarrollo (issue
+[#14](https://github.com/Lualvarad0/Unisono/issues/14)).
 
 ### Vista rápida de un servicio
 
@@ -78,7 +80,7 @@ y el [roadmap de issues](#roadmap-e-issues-abiertos).
 | Actividades, setlists ordenados, cantante y tono por canción | Equipo | ✅ Implementado |
 | Vista en vivo que muestra canción y sección activa en dispositivos del equipo | Líder, músicos y cantantes | ✅ Implementado mediante streams de Firestore cuando hay conexión |
 | Lectura de datos previamente descargados sin internet | Equipo ya autenticado | ✅ Caché persistente de Firestore; depende de que el contenido esté en el dispositivo |
-| Envío local de canción y sección por Nearby | Líder y seguidores cercanos | ⚠️ Integrado parcialmente; el funcionamiento offline completo y la prueba en dispositivos están pendientes, ver [#10–#14](https://github.com/Lualvarad0/Unisono/issues/10) |
+| Envío local de canción y sección por Nearby, con recuperación al reconectar | Líder y seguidores cercanos | ⚠️ Implementado y con tests unitarios; la prueba en dispositivos reales sigue pendiente, ver [#14](https://github.com/Lualvarad0/Unisono/issues/14) |
 | Notificaciones de actividad, setlist, asignación e integrantes; recordatorio | Equipo | ✅ Cliente y Cloud Functions implementados; requieren Firebase configurado y despliegue |
 | Notas personales o compartidas y consignas de práctica | Equipo | ✅ Implementado |
 | Perfil, foto y preferencias de lectura/apariencia | Cada persona | ✅ Implementado |
@@ -197,7 +199,7 @@ flowchart TD
     Nearby[Nearby puede enviar estado local<br/>entre teléfonos cercanos]
     Vuelve{¿Vuelve internet o se pierde<br/>el peer y luego se reconecta?}
     Sync[Firestore sincroniza escrituras pendientes]
-    Limite[No hay reconciliación de sesión ni<br/>reenvío garantizado al reconectar]
+    Reconecta[El líder reenvía el snapshot vigente<br/>al dispositivo que se conectó]
 
     Inicio --> Cache
     Cache -->|Sí| Datos
@@ -209,17 +211,22 @@ flowchart TD
     Online --> Vuelve
     Nearby --> Vuelve
     Vuelve -->|Regresa internet| Sync
-    Vuelve -->|Cambia la conexión local| Limite
+    Vuelve -->|Se reconecta el canal local| Reconecta
 ```
 
 **Límite importante:** Firestore conserva caché y sincroniza escrituras
 pendientes al recuperar internet. El canal Nearby transmite solamente
 `actividadId`, `cancionActivaId` y `seccionActivaIndice`; no envía letras
-ni setlists. El código todavía no versiona mensajes, no hace reconciliación
-de autoridad y no garantiza que un seguidor que se reconecte reciba el
-último estado. Esos trabajos están abiertos en [#11](https://github.com/Lualvarad0/Unisono/issues/11),
-[#12](https://github.com/Lualvarad0/Unisono/issues/12) y
-[#13](https://github.com/Lualvarad0/Unisono/issues/13).
+ni setlists — si una canción del setlist no está en el caché de este
+teléfono, `EnVivoScreen` lo avisa (ver "Protocolo del estado en vivo"
+abajo), pero no la descarga. Los mensajes van versionados por sesión y
+secuencia (`EstadoEnVivoLocal`, [#11](https://github.com/Lualvarad0/Unisono/issues/11)),
+el líder no espera a Firestore para avanzar
+([#12](https://github.com/Lualvarad0/Unisono/issues/12)), y un seguidor
+que se conecta o reconecta recibe el snapshot vigente de cada actividad
+sin reiniciar nada ([#13](https://github.com/Lualvarad0/Unisono/issues/13)).
+Falta la validación en dispositivos físicos reales
+([#14](https://github.com/Lualvarad0/Unisono/issues/14)).
 
 ## Modelo de datos
 
@@ -522,13 +529,14 @@ proyecto aparte y no es la aplicación móvil.
 ## Probar sincronización local con 2 o más teléfonos
 
 **Estado:** el protocolo versionado del estado en vivo
-([#11](https://github.com/Lualvarad0/Unisono/issues/11)) y la conducción
+([#11](https://github.com/Lualvarad0/Unisono/issues/11)), la conducción
 local-first del líder ([#12](https://github.com/Lualvarad0/Unisono/issues/12))
-ya están hechos; el estado de conexión/reconexión del seguidor y la
-prueba real en dispositivos siguen abiertas en
-[#13–#14](https://github.com/Lualvarad0/Unisono/issues/13). La prueba
-sirve para observar el comportamiento actual y aportar validación; no
-presupone que los criterios futuros ya estén resueltos.
+y la recuperación de seguidores al reconectar
+([#13](https://github.com/Lualvarad0/Unisono/issues/13)) ya están hechos;
+la prueba real en dispositivos sigue abierta en
+[#14](https://github.com/Lualvarad0/Unisono/issues/14). La prueba manual
+de abajo sirve para observar el comportamiento actual y aportar
+validación real, además de lo que ya cubren los tests unitarios.
 
 ### Protocolo del estado en vivo (Nearby)
 
@@ -568,11 +576,28 @@ vigente; los demás campos son defensivos — un mensaje de un emisor que
 todavía no actualizó el protocolo decodifica igual, con valores por
 omisión. Ver tests en `test/models/estado_en_vivo_local_test.dart`.
 
+**Recuperación de seguidores ([#13](https://github.com/Lualvarad0/Unisono/issues/13)):**
+cuando un dispositivo se conecta o reconecta, el líder le reenvía (vía
+`EstadoEnVivoLocal.comoSnapshot`) el último estado vigente de cada
+actividad, sin esperar a que haya un cambio nuevo que transmitir; un
+seguidor que se desconectó puede volver a invitarse apenas reaparece.
+`ConexionLocalService.estadoConexion` expone si hay algún dispositivo
+conectado ahora (`recibiendo`), si hubo uno y se perdió
+(`reconectando`) o si nunca hubo ninguno (`desconectado`) —
+`EnVivoScreen` y `VistaEnVivoScreen` lo muestran para que un seguidor
+sepa si lo que está viendo puede estar atrasado. Ambas pantallas también
+avisan si falta en caché alguna canción del setlist de la actividad
+(`entradasSinCancionDisponible`), para detectarlo antes de depender de
+ella sin internet. Ver tests en
+`test/services/conexion_local_service_test.dart` y
+`test/screens/en_vivo/preparacion_offline_utils_test.dart`.
+
 1. Usa dos o más teléfonos Android reales, instala la misma compilación
    y configura cada teléfono con el mismo proyecto Firebase.
 2. Con internet disponible, inicia sesión en cada uno, vincúlalos al
    mismo equipo y abre una actividad. Revisa que la actividad, su setlist
-   y las canciones necesarias se hayan cargado en cada teléfono.
+   y las canciones necesarias se hayan cargado en cada teléfono — si
+   falta alguna, **En vivo** debería avisarlo.
 3. En los teléfonos, acepta los permisos de Bluetooth, dispositivos
    cercanos y ubicación que solicite el sistema. La app inicia el
    descubrimiento local al entrar en la navegación principal; el miembro
@@ -583,14 +608,16 @@ omisión. Ver tests en `test/models/estado_en_vivo_local_test.dart`.
    Bluetooth/Wi-Fi si el fabricante lo permite).
 5. En el teléfono del líder, abre **En vivo**, elige una canción y cambia
    de sección. La pantalla del líder ya no espera la escritura de
-   Firestore para abrir o avanzar ([#12](https://github.com/Lualvarad0/Unisono/issues/12));
-   observa si los seguidores reciben el cambio por Nearby. Lo que todavía
-   no está resuelto es que un seguidor que pierda la conexión recupere el
-   snapshot vigente al reconectarse ([#13](https://github.com/Lualvarad0/Unisono/issues/13)):
-   anota el resultado, no lo interpretes como una prueba aprobada de eso.
-6. Recupera internet y observa si Firestore sincroniza las escrituras
-   pendientes del líder. La recuperación de sesión Nearby de un
-   seguidor sigue sin estar garantizada por el código actual — ver #13.
+   Firestore para abrir o avanzar; observa si los seguidores reciben el
+   cambio por Nearby y si la Vista en vivo del seguidor deja de mostrar
+   el ícono de "siguiendo" normal y pasa a mostrar "reconectando" o "sin
+   conexión" cuando corresponda.
+6. En un teléfono seguidor, desactiva Bluetooth/Wi-Fi un momento y
+   reactívalo (o alejalo y vuelve a acercarlo). Debería reconectarse solo
+   y recibir el snapshot vigente de la actividad sin que nadie reinicie
+   nada ni vuelva a abrir la canción.
+7. Recupera internet y observa si Firestore sincroniza las escrituras
+   pendientes del líder.
 
 ### Solución de problemas
 
@@ -602,7 +629,7 @@ omisión. Ver tests en `test/models/estado_en_vivo_local_test.dart`.
 | No aparecen equipo, repertorio o actividad | Comprueba que ambas cuentas pertenezcan al mismo `equipoId`, que Firestore esté habilitado y que cada teléfono tenga internet al menos durante la carga inicial. |
 | No llegan notificaciones | Revisa que las Cloud Functions estén desplegadas, permisos de notificación del sistema y token FCM; el cliente por sí solo no genera los avisos del servidor. |
 | Los teléfonos no se descubren | Prueba en dispositivos reales, confirma permisos Bluetooth/ubicación/dispositivos cercanos, mantén Wi-Fi y Bluetooth encendidos y acerca los teléfonos. Nearby no se valida con emulador. |
-| El seguidor no refleja la sección al instante | La transmisión local-first del líder ya está hecha ([#12](https://github.com/Lualvarad0/Unisono/issues/12)); el reenvío del snapshot vigente al reconectar sigue abierto en [#13](https://github.com/Lualvarad0/Unisono/issues/13); registra modelo, sistema operativo y si había internet. |
+| El seguidor no refleja la sección al instante o no se recupera al reconectar | La transmisión local-first y el reenvío de snapshot al reconectar ya están hechos ([#12](https://github.com/Lualvarad0/Unisono/issues/12), [#13](https://github.com/Lualvarad0/Unisono/issues/13)); revisa el indicador de conexión en pantalla y confirma Bluetooth/Wi-Fi/permisos. Si persiste, registra modelo, sistema operativo y si había internet — la validación real en dispositivos sigue abierta en [#14](https://github.com/Lualvarad0/Unisono/issues/14). |
 
 ## Pruebas y automatización
 
@@ -616,13 +643,23 @@ Pruebas que existen actualmente:
 - `test/widget_test.dart`: smoke test de un `MaterialApp` con texto
   placeholder; no inicia la app completa ni conecta a Firebase.
 - `test/models/estado_en_vivo_local_test.dart`: protocolo del estado en
-  vivo — serialización JSON y la regla de secuencia/sesión que descarta
-  duplicados y mensajes atrasados (ver [#11](https://github.com/Lualvarad0/Unisono/issues/11)).
+  vivo — serialización JSON, la regla de secuencia/sesión que descarta
+  duplicados y mensajes atrasados, y `comoSnapshot` (ver
+  [#11](https://github.com/Lualvarad0/Unisono/issues/11)).
 - `test/services/conexion_local_service_test.dart`: el líder asigna
   sesión y secuencia al transmitir, un seguidor no transmite nada (ver
-  [#12](https://github.com/Lualvarad0/Unisono/issues/12)). No cubre el
-  plugin Nearby en sí (`ConexionLocalService.iniciar`) — eso necesita
-  dispositivos reales, ver más abajo.
+  [#12](https://github.com/Lualvarad0/Unisono/issues/12)); además, un
+  mensaje atrasado/malformado no pisa el estado vigente y
+  `calcularEstadoConexion` resuelve `desconectado`/`reconectando`/
+  `recibiendo` según corresponda (ver
+  [#13](https://github.com/Lualvarad0/Unisono/issues/13)). No cubre el
+  plugin Nearby en sí (`ConexionLocalService.iniciar`, el reenvío real
+  de snapshot a un dispositivo que conecta) — eso necesita dispositivos
+  reales, ver más abajo, o el transporte simulado de
+  [#14](https://github.com/Lualvarad0/Unisono/issues/14).
+- `test/screens/en_vivo/preparacion_offline_utils_test.dart`: detecta
+  canciones del setlist que no están disponibles en el caché local (ver
+  [#13](https://github.com/Lualvarad0/Unisono/issues/13)).
 
 No hay pruebas de integración de Firebase, reglas, notificaciones ni
 Nearby; tampoco pruebas de sincronización multi-dispositivo
@@ -647,12 +684,12 @@ Los enlaces evitan duplicar criterios de aceptación que pueden cambiar:
 
 | Issue abierto | Tema | Situación observada en el código |
 |---|---|---|
-| [#10 — Épica: modo en vivo resiliente sin internet](https://github.com/Lualvarad0/Unisono/issues/10) | Conducción offline del líder, reconciliación, recuperación y pruebas reales | La épica describe trabajo pendiente; la implementación actual de Nearby no cumple aún el flujo local-first completo |
+| [#10 — Épica: modo en vivo resiliente sin internet](https://github.com/Lualvarad0/Unisono/issues/10) | Conducción offline del líder, reconciliación, recuperación y pruebas reales | #11–#13 hechos; falta la validación real en dispositivos (#14) |
 | [#11 — Protocolo versionado](https://github.com/Lualvarad0/Unisono/issues/11) | Sesión, secuencia monotónica, tipo de evento y validación de mensajes | Hecho — ver `EstadoEnVivoLocal` y la sección "Protocolo del estado en vivo" arriba |
 | [#12 — Conducción local-first y reconciliación](https://github.com/Lualvarad0/Unisono/issues/12) | No bloquear cambios por Firestore; definir checkpoint autoritativo | Hecho — `EnVivoScreen`/`VistaEnVivoScreen` ya no esperan el write de Firestore, y `firestore.rules` restringe la escritura de `actividades` al líder (sin validar contra emulador, ver docs/SEGURIDAD.md) |
-| [#13 — Recuperar seguidores y mostrar sincronización](https://github.com/Lualvarad0/Unisono/issues/13) | Estado de conexión, snapshot actual al reconectar y prueba offline | El código no garantiza reenvío al reconectar ni presenta estado de seguimiento |
-| [#14 — Prueba en dispositivos y documentación offline](https://github.com/Lualvarad0/Unisono/issues/14) | Validar en teléfonos y documentar el resultado | La prueba multi-dispositivo sigue pendiente |
-| [#5 — Ordenar alabanzas recientes](https://github.com/Lualvarad0/Unisono/issues/5) | Orden por fecha de carga | Planeado |
+| [#13 — Recuperar seguidores y mostrar sincronización](https://github.com/Lualvarad0/Unisono/issues/13) | Estado de conexión, snapshot actual al reconectar y prueba offline | Hecho — `ConexionLocalService` reenvía el snapshot vigente al reconectar y expone `estadoConexion`; `EnVivoScreen`/`VistaEnVivoScreen` lo muestran junto con el contenido faltante |
+| [#14 — Prueba en dispositivos y documentación offline](https://github.com/Lualvarad0/Unisono/issues/14) | Validar en teléfonos y documentar el resultado | La prueba multi-dispositivo real sigue pendiente |
+| [#5 — Ordenar alabanzas recientes](https://github.com/Lualvarad0/Unisono/issues/5) | Orden por fecha de carga | Hecho |
 | [#6 — Buscar por artista y etiquetas](https://github.com/Lualvarad0/Unisono/issues/6) | Búsqueda del repertorio | Planeado |
 | [#7 — Filtrar actividades](https://github.com/Lualvarad0/Unisono/issues/7) | Actividades próximas y anteriores | Planeado |
 | [#8 — Favoritas personales](https://github.com/Lualvarad0/Unisono/issues/8) | Favoritos por usuario | Planeado |

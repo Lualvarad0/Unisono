@@ -184,23 +184,30 @@ class _VistaEnVivoScreenState extends State<VistaEnVivoScreen> {
                         });
                       }
 
-                      return _Lector(
-                        tituloCancion: cancion.titulo,
-                        tonoResultante: entrada == null
-                            ? cancion.tonoOriginal
-                            : transponerTono(
-                                cancion.tonoOriginal, entrada.tonoAsignado),
-                        secciones: cancionChordPro.secciones,
-                        mostrarAcordes: mostrarAcordes,
-                        tamanoLetra: preferencias.tamanoLetra,
-                        paginaController: _paginaController,
-                        siguiendoLider: siguiendoLider,
-                        esLider: widget.esLider,
-                        transmitiendoEstaCancion:
-                            widget.esLider && esCancionActiva,
-                        onCambiarPagina: actividad == null
-                            ? null
-                            : (indice) => _transmitirSeccion(actividad, indice),
+                      return StreamBuilder<EstadoConexionLocal>(
+                        initialData: conexionLocal.estadoConexionActual,
+                        stream: conexionLocal.estadoConexion,
+                        builder: (context, snapshotConexion) => _Lector(
+                          tituloCancion: cancion.titulo,
+                          tonoResultante: entrada == null
+                              ? cancion.tonoOriginal
+                              : transponerTono(
+                                  cancion.tonoOriginal, entrada.tonoAsignado),
+                          secciones: cancionChordPro.secciones,
+                          mostrarAcordes: mostrarAcordes,
+                          tamanoLetra: preferencias.tamanoLetra,
+                          paginaController: _paginaController,
+                          siguiendoLider: siguiendoLider,
+                          esLider: widget.esLider,
+                          transmitiendoEstaCancion:
+                              widget.esLider && esCancionActiva,
+                          estadoConexion: snapshotConexion.data ??
+                              EstadoConexionLocal.desconectado,
+                          onCambiarPagina: actividad == null
+                              ? null
+                              : (indice) =>
+                                  _transmitirSeccion(actividad, indice),
+                        ),
                       );
                     },
                   );
@@ -225,6 +232,7 @@ class _Lector extends StatefulWidget {
     required this.siguiendoLider,
     required this.esLider,
     required this.transmitiendoEstaCancion,
+    required this.estadoConexion,
     required this.onCambiarPagina,
   });
 
@@ -237,6 +245,7 @@ class _Lector extends StatefulWidget {
   final bool siguiendoLider;
   final bool esLider;
   final bool transmitiendoEstaCancion;
+  final EstadoConexionLocal estadoConexion;
   final ValueChanged<int>? onCambiarPagina;
 
   @override
@@ -263,6 +272,7 @@ class _LectorState extends State<_Lector> {
               tono: widget.tonoResultante,
               transmitiendo: widget.transmitiendoEstaCancion,
               siguiendoLider: widget.siguiendoLider,
+              estadoConexion: widget.estadoConexion,
             ),
             Expanded(
               child: Center(
@@ -285,6 +295,7 @@ class _LectorState extends State<_Lector> {
             tono: widget.tonoResultante,
             transmitiendo: widget.transmitiendoEstaCancion,
             siguiendoLider: widget.siguiendoLider,
+            estadoConexion: widget.estadoConexion,
           ),
           Expanded(
             child: PageView.builder(
@@ -344,12 +355,14 @@ class _Encabezado extends StatelessWidget {
     required this.tono,
     required this.transmitiendo,
     required this.siguiendoLider,
+    required this.estadoConexion,
   });
 
   final String titulo;
   final String tono;
   final bool transmitiendo;
   final bool siguiendoLider;
+  final EstadoConexionLocal estadoConexion;
 
   @override
   Widget build(BuildContext context) {
@@ -389,11 +402,34 @@ class _Encabezado extends StatelessWidget {
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             )
           else if (siguiendoLider)
-            Icon(Icons.sync,
-                size: 20, color: tema.colorScheme.onSurfaceVariant),
+            _IndicadorConexion(estado: estadoConexion),
         ],
       ),
     );
+  }
+}
+
+/// Reemplaza al ícono fijo de "siguiendo al líder" por uno que distingue
+/// `recibiendo`/`reconectando`/`desconectado` — ver `EstadoConexionLocal`
+/// y la épica #10, sub-tarea #13.
+class _IndicadorConexion extends StatelessWidget {
+  const _IndicadorConexion({required this.estado});
+
+  final EstadoConexionLocal estado;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    switch (estado) {
+      case EstadoConexionLocal.recibiendo:
+        return Icon(Icons.sync,
+            size: 20, color: tema.colorScheme.onSurfaceVariant);
+      case EstadoConexionLocal.reconectando:
+        return Icon(Icons.sync_problem,
+            size: 20, color: tema.colorScheme.error);
+      case EstadoConexionLocal.desconectado:
+        return Icon(Icons.wifi_off, size: 20, color: tema.colorScheme.error);
+    }
   }
 }
 
