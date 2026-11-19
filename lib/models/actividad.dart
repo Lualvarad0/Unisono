@@ -4,9 +4,9 @@ import 'package:equatable/equatable.dart';
 import 'package:app_alabanzas/core/firestore/model_converter.dart';
 import 'package:app_alabanzas/models/setlist_entry.dart';
 
-/// Un servicio/ensayo con su setlist ordenado. Es el documento que la
-/// Vista Líder transmite por la Capa 2 (`actividadId` + índice de canción
-/// activa) para que los demás celulares sepan qué mostrar.
+/// Un servicio/ensayo con su setlist ordenado. `cancionActivaId` y
+/// `seccionActivaIndice` son el checkpoint en Firestore de lo que el
+/// líder está transmitiendo en Vista en vivo — ver doc de esos campos.
 class Actividad extends Equatable {
   const Actividad({
     required this.id,
@@ -23,13 +23,11 @@ class Actividad extends Equatable {
   final List<SetlistEntry> setlist;
 
   /// Qué canción del setlist está mostrando el líder en Vista en vivo
-  /// ahora mismo — `null` significa que nadie está transmitiendo. Es la
-  /// versión con Firestore (en vez de la Capa 2 P2P que todavía no está
-  /// conectada acá, ver `PrincipalShellScreen`) de lo mismo que ya
-  /// describía este modelo: "actividadId + índice de canción activa" que
-  /// el líder transmite para que los demás celulares sepan qué mostrar.
-  /// Solo funciona con conexión — el repertorio en sí sigue disponible
-  /// offline como siempre.
+  /// ahora mismo — `null` significa que nadie está transmitiendo. Esta
+  /// es la copia en Firestore, que se persiste cuando hay conexión; el
+  /// estado que de verdad manda durante una sesión en vivo viaja por
+  /// Nearby sin depender de internet (`ConexionLocalService`,
+  /// `EstadoEnVivoLocal`) — ver épica #10.
   final String? cancionActivaId;
 
   /// Qué sección de esa canción (índice sobre `CancionChordPro.secciones`)

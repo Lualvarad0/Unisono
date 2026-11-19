@@ -173,6 +173,47 @@ que no pertenece, no es lo que protege la privacidad acá (eso lo hace
 `request.auth.uid == uid` solo). Historia: "Agregar alabanzas favoritas
 personales".
 
+### `actividades`: la escritura la autoriza solo el líder
+
+Hasta la épica #10 (modo en vivo sin internet), `equipoDeUsuario() == equipoId`
+alcanzaba para escribir una Actividad — cualquier integrante del equipo
+podía crear, editar o borrar cualquier actividad, incluidos
+`cancionActivaId` y `seccionActivaIndice` (el "estado en vivo" que el
+líder transmite). En la práctica nunca fue un problema porque el cliente
+solo expone esas acciones detrás de `esLider`, pero las reglas no lo
+exigían — un seguidor con un cliente distinto (o modificado) sí podía.
+
+Sub-tarea #12 cierra esa brecha del lado del servidor:
+
+```
+function esLiderDeEquipo(equipoId) {
+  let miembroId = get(/databases/$(database)/documents/usuarioEquipo/$(request.auth.uid)).data.miembroId;
+  return get(/databases/$(database)/documents/equipos/$(equipoId)/miembros/$(miembroId)).data.roles.hasAny(['lider']);
+}
+
+match /actividades/{id} {
+  allow read: if request.auth != null && equipoDeUsuario() == equipoId;
+  allow create, update, delete: if request.auth != null
+    && equipoDeUsuario() == equipoId
+    && esLiderDeEquipo(equipoId);
+}
+```
+
+`usuarioEquipo/{uid}.miembroId` ya existía (lo usa `usuarioEquipo.create`
+para cruzar contra el Miembro real) — acá se reutiliza para resolver el
+perfil de quien pide la escritura y mirar sus `roles`. `read` sigue
+abierto a todo el equipo: cualquiera necesita ver qué está transmitiendo
+el líder, nadie más necesita poder cambiarlo.
+
+> [!WARNING]
+> Esta regla no se pudo validar contra el emulador de Firestore en este
+> entorno (`firebase emulators:start` falla acá por versión de Java —
+> ver limitación ya registrada en este mismo documento). Se revisó a
+> mano contra el resto del archivo y contra qué pantallas llaman a
+> crear/actualizar/eliminar una Actividad hoy (solo las que ya exigen
+> `esLider`), pero conviene probarla con el emulador o en un proyecto de
+> prueba antes de confiar en ella en producción.
+
 ### La lección de las reglas OR (importante, ya nos pasó dos veces)
 
 > [!IMPORTANT]
@@ -253,10 +294,12 @@ el control de acceso acá es distinto al resto de la app:
 
 ## ⏱️ Rate limiting (Cloud Functions)
 
-Cualquier integrante autenticado puede escribir en `actividades` (lo
-necesita el líder para armar un setlist), así que nada impide que una
-escritura repetida dispare el mismo aviso push varias veces seguidas —
-sea sin querer o a propósito. `dentroDelLimite()` en `functions/index.js`
+El líder del equipo puede escribir en `actividades` (armar el setlist,
+iniciar/avanzar el modo en vivo — ver arriba "`actividades`: la
+escritura la autoriza solo el líder"), así que nada impide que una
+escritura repetida dispare el mismo aviso push varias veces seguidas,
+por ejemplo por un bug del lado del cliente. `dentroDelLimite()` en
+`functions/index.js`
 usa una transacción de Firestore para que un mismo aviso (misma
 `equipoId_tipo_actividadId`) no se repita dentro de una ventana de 2
 minutos, sin importar cuántas escrituras lo disparen. Ver

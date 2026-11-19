@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -26,14 +29,13 @@ extension<T> on Iterable<T> {
 /// Quien tiene rol Músico o Líder ve letra + acordes; quien es solo
 /// Cantante ve nomás la letra, sin ruido visual.
 ///
-/// El líder controla el avance (desliza/toca las flechas) y eso
-/// actualiza `Actividad.seccionActivaIndice` en Firestore en tiempo
-/// real; todo el que esté mirando esta misma canción activa sigue esa
-/// posición automáticamente, sin poder desviarse — es "transmitir" con
-/// lo que ya hay (Firestore), no la Capa 2 P2P que todavía no está
-/// conectada (ver `PrincipalShellScreen`). Si alguien abre una canción
-/// que no es la activa, la navega libre por su cuenta — no hay nada que
-/// seguir ahí.
+/// El líder controla el avance (desliza/toca las flechas); eso transmite
+/// por red local (`ConexionLocalService`, sin esperar internet) y además
+/// actualiza `Actividad.seccionActivaIndice` en Firestore cuando hay
+/// conexión — ver épica #10. Todo el que esté mirando esta misma canción
+/// activa sigue esa posición automáticamente, sin poder desviarse. Si
+/// alguien abre una canción que no es la activa, la navega libre por su
+/// cuenta — no hay nada que seguir ahí.
 class VistaEnVivoScreen extends StatefulWidget {
   const VistaEnVivoScreen({
     super.key,
@@ -83,22 +85,33 @@ class _VistaEnVivoScreenState extends State<VistaEnVivoScreen> {
 
   Future<void> _transmitirSeccion(Actividad actividad, int indice) async {
     if (!widget.esLider) return;
-    final repositorio = context.read<Repositorio<Actividad>>();
     final conexionLocal = context.read<ConexionLocalService>();
-    await repositorio.actualizar(
-      actividad.id,
-      actividad.copyWith(cancionActivaId: widget.cancionId, seccionActivaIndice: indice),
+    // Nearby primero y sin esperar el write de Firestore: esa escritura
+    // puede quedar pendiente indefinidamente sin internet, y no hay
+    // motivo para que una sala sin señal bloquee el avance local — ver
+    // épica #10, sub-tarea #12.
+    unawaited(
+      context
+          .read<Repositorio<Actividad>>()
+          .actualizar(
+            actividad.id,
+            actividad.copyWith(
+                cancionActivaId: widget.cancionId, seccionActivaIndice: indice),
+          )
+          .catchError(
+        (Object error) {
+          if (kDebugMode) {
+            debugPrint(
+                'VistaEnVivoScreen: escritura Firestore pendiente ($error)');
+          }
+        },
+      ),
     );
-    // Además de Firestore: por red local, para que quien esté cerca lo
-    // vea al toque aunque no haya internet en el lugar — ver
-    // `ConexionLocalService`.
     await conexionLocal.transmitir(
-          EstadoEnVivoLocal(
-            actividadId: actividad.id,
-            cancionActivaId: widget.cancionId,
-            seccionActivaIndice: indice,
-          ),
-        );
+      actividadId: actividad.id,
+      cancionActivaId: widget.cancionId,
+      seccionActivaIndice: indice,
+    );
   }
 
   @override
@@ -112,27 +125,24 @@ class _VistaEnVivoScreenState extends State<VistaEnVivoScreen> {
             : context.read<MiembroRepository>().buscarPorUid(uid),
         builder: (context, snapshotYo) {
           final roles = snapshotYo.data?.roles ?? const <RolMiembro>[];
-          final puedeVerAcordes =
-              roles.contains(RolMiembro.musico) || roles.contains(RolMiembro.lider);
+          final puedeVerAcordes = roles.contains(RolMiembro.musico) ||
+              roles.contains(RolMiembro.lider);
           // El permiso por rol manda primero (Cantante nunca ve acordes);
           // la preferencia personal solo puede apagarlos para quien sí
           // podría verlos, no encenderlos para quien no debería.
           final mostrarAcordes = puedeVerAcordes && preferencias.mostrarAcordes;
           return StreamBuilder<Cancion?>(
-            stream: context
-                .read<Repositorio<Cancion>>()
-                .watchAll()
-                .map((l) => l.where((c) => c.id == widget.cancionId).firstOrNull),
+            stream: context.read<Repositorio<Cancion>>().watchAll().map(
+                (l) => l.where((c) => c.id == widget.cancionId).firstOrNull),
             builder: (context, snapshotCancion) {
               final cancion = snapshotCancion.data;
               if (cancion == null) {
                 return const Center(child: CircularProgressIndicator());
               }
               return StreamBuilder<Actividad?>(
-                stream: context
-                    .read<Repositorio<Actividad>>()
-                    .watchAll()
-                    .map((l) => l.where((a) => a.id == widget.actividadId).firstOrNull),
+                stream: context.read<Repositorio<Actividad>>().watchAll().map(
+                    (l) =>
+                        l.where((a) => a.id == widget.actividadId).firstOrNull),
                 builder: (context, snapshotActividad) {
                   final actividadFirestore = snapshotActividad.data;
                   final conexionLocal = context.read<ConexionLocalService>();
@@ -152,15 +162,17 @@ class _VistaEnVivoScreenState extends State<VistaEnVivoScreen> {
                                   cancionActivaId: estadoLocal.cancionActivaId,
                                   limpiarCancionActiva:
                                       estadoLocal.cancionActivaId == null,
-                                  seccionActivaIndice: estadoLocal.seccionActivaIndice,
+                                  seccionActivaIndice:
+                                      estadoLocal.seccionActivaIndice,
                                 );
                       final entrada = actividad?.setlist
                           .where((e) => e.cancionId == widget.cancionId)
                           .firstOrNull;
-                      final cancionChordPro = ChordProParser.parse(cancion.contenidoChordPro)
-                          .transponer(entrada?.tonoAsignado ?? 0);
-                      final esCancionActiva =
-                          actividad != null && actividad.cancionActivaId == widget.cancionId;
+                      final cancionChordPro =
+                          ChordProParser.parse(cancion.contenidoChordPro)
+                              .transponer(entrada?.tonoAsignado ?? 0);
+                      final esCancionActiva = actividad != null &&
+                          actividad.cancionActivaId == widget.cancionId;
                       final siguiendoLider = !widget.esLider && esCancionActiva;
 
                       if (siguiendoLider) {
@@ -176,14 +188,16 @@ class _VistaEnVivoScreenState extends State<VistaEnVivoScreen> {
                         tituloCancion: cancion.titulo,
                         tonoResultante: entrada == null
                             ? cancion.tonoOriginal
-                            : transponerTono(cancion.tonoOriginal, entrada.tonoAsignado),
+                            : transponerTono(
+                                cancion.tonoOriginal, entrada.tonoAsignado),
                         secciones: cancionChordPro.secciones,
                         mostrarAcordes: mostrarAcordes,
                         tamanoLetra: preferencias.tamanoLetra,
                         paginaController: _paginaController,
                         siguiendoLider: siguiendoLider,
                         esLider: widget.esLider,
-                        transmitiendoEstaCancion: widget.esLider && esCancionActiva,
+                        transmitiendoEstaCancion:
+                            widget.esLider && esCancionActiva,
                         onCambiarPagina: actividad == null
                             ? null
                             : (indice) => _transmitirSeccion(actividad, indice),
@@ -357,7 +371,8 @@ class _Encabezado extends StatelessWidget {
                   titulo,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                  style: tema.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 Text('Tono $tono',
                     style: tema.textTheme.bodySmall
@@ -367,13 +382,15 @@ class _Encabezado extends StatelessWidget {
           ),
           if (transmitiendo)
             Chip(
-              avatar: Icon(Icons.sensors, size: 16, color: tema.colorScheme.primary),
+              avatar: Icon(Icons.sensors,
+                  size: 16, color: tema.colorScheme.primary),
               label: const Text('Transmitiendo'),
               visualDensity: VisualDensity.compact,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             )
           else if (siguiendoLider)
-            Icon(Icons.sync, size: 20, color: tema.colorScheme.onSurfaceVariant),
+            Icon(Icons.sync,
+                size: 20, color: tema.colorScheme.onSurfaceVariant),
         ],
       ),
     );
@@ -464,7 +481,8 @@ class _SeccionEnVivo extends StatelessWidget {
                   ? Wrap(
                       children: [
                         for (final segmento in linea.segmentos)
-                          if (segmento.acorde != null || segmento.letra.isNotEmpty)
+                          if (segmento.acorde != null ||
+                              segmento.letra.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(right: 3),
                               child: Column(
@@ -486,7 +504,9 @@ class _SeccionEnVivo extends StatelessWidget {
                                   ),
                                   Text(
                                     segmento.letra,
-                                    style: TextStyle(fontSize: tamanoLetraFinal, height: 1.3),
+                                    style: TextStyle(
+                                        fontSize: tamanoLetraFinal,
+                                        height: 1.3),
                                   ),
                                 ],
                               ),

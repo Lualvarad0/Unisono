@@ -43,16 +43,15 @@ async function tokensDelEquipo(equipoId, { excluirId } = {}) {
 
 /**
  * Límite de frecuencia para avisos a todo el equipo: `firestore.rules`
- * deja que cualquier integrante autenticado escriba en `actividades`
- * (hace falta para que el líder pueda armar un setlist), así que nada
- * impide que alguien —con mala intención, o por un bug del lado del
- * cliente— dispare `onModoEnVivoIniciado`/`onSetlistEscrito` a repetición
- * tocando el mismo campo varias veces seguidas, mandándole un push a
- * todo el equipo cada vez. Esto frena eso: un mismo aviso (misma
- * `clave`, ya con el equipo adentro) no se repite dentro de la ventana,
- * sin importar cuántas escrituras lo disparen. Colección propia a nivel
- * raíz (no adentro de cada equipo) porque es puro control interno, nunca
- * la lee ni la escribe el cliente.
+ * deja que el líder del equipo escriba en `actividades` (crear/editar
+ * setlist, iniciar/avanzar el modo en vivo), así que nada impide que un
+ * bug del lado del cliente dispare `onModoEnVivoIniciado`/
+ * `onSetlistEscrito` a repetición tocando el mismo campo varias veces
+ * seguidas, mandándole un push a todo el equipo cada vez. Esto frena
+ * eso: un mismo aviso (misma `clave`, ya con el equipo adentro) no se
+ * repite dentro de la ventana, sin importar cuántas escrituras lo
+ * disparen. Colección propia a nivel raíz (no adentro de cada equipo)
+ * porque es puro control interno, nunca la lee ni la escribe el cliente.
  */
 const VENTANA_RATE_LIMIT_MS = 2 * 60 * 1000;
 

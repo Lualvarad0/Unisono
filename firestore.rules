@@ -35,6 +35,18 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/usuarioEquipo/$(request.auth.uid)).data.equipoId;
     }
 
+    // El estado en vivo autoritativo (`cancionActivaId`,
+    // `seccionActivaIndice` de una Actividad) solo lo escribe el líder —
+    // ver docs/SEGURIDAD.md "`actividades`: la escritura la autoriza solo
+    // el líder" (épica #10, sub-tarea #12). Hoy en la práctica ya es así
+    // del lado del cliente (solo pantallas con `esLider` llaman a crear/
+    // actualizar/eliminar una Actividad); esto lo hace valer también del
+    // lado del servidor.
+    function esLiderDeEquipo(equipoId) {
+      let miembroId = get(/databases/$(database)/documents/usuarioEquipo/$(request.auth.uid)).data.miembroId;
+      return get(/databases/$(database)/documents/equipos/$(equipoId)/miembros/$(miembroId)).data.roles.hasAny(['lider']);
+    }
+
     // El directorio de equipos en sí. `get` puntual sí (hace falta
     // conocer el equipoId exacto, que es un ID autogenerado de 20
     // caracteres — no algo adivinable), pero `list` no: buscar por
@@ -56,8 +68,16 @@ service cloud.firestore {
       match /canciones/{id} {
         allow read, write: if request.auth != null && equipoDeUsuario() == equipoId;
       }
+      // Cualquiera del equipo puede leer (seguir el modo en vivo, ver el
+      // calendario); solo el líder puede crear, editar o borrar — incluye
+      // el estado en vivo (`cancionActivaId`/`seccionActivaIndice`), que
+      // es justo lo que un seguidor nunca debería poder pisar. Ver
+      // docs/SEGURIDAD.md.
       match /actividades/{id} {
-        allow read, write: if request.auth != null && equipoDeUsuario() == equipoId;
+        allow read: if request.auth != null && equipoDeUsuario() == equipoId;
+        allow create, update, delete: if request.auth != null
+          && equipoDeUsuario() == equipoId
+          && esLiderDeEquipo(equipoId);
       }
       match /notas/{id} {
         allow read, write: if request.auth != null && equipoDeUsuario() == equipoId;

@@ -36,9 +36,10 @@ está construida con Flutter y usa Firebase como backend.
 **Unísono no sustituye la coordinación del equipo ni promete que todas
 las funciones trabajen sin conexión.** Los datos que ya están en caché
 se pueden leer sin internet. Hay un canal de Nearby para transmitir el
-modo en vivo entre teléfonos cercanos, pero el flujo completo sin
-internet —incluida la conducción local-first, la reconciliación y la
-recuperación automática— sigue en desarrollo (issues [#10–#14](https://github.com/Lualvarad0/Unisono/issues/10)).
+modo en vivo entre teléfonos cercanos; el líder ya conduce local-first
+(no espera a Firestore para avanzar), pero la recuperación automática
+de un seguidor que pierde la red y la validación en dispositivos reales
+siguen en desarrollo (issues [#13–#14](https://github.com/Lualvarad0/Unisono/issues/13)).
 
 ### Vista rápida de un servicio
 
@@ -520,11 +521,12 @@ proyecto aparte y no es la aplicación móvil.
 
 ## Probar sincronización local con 2 o más teléfonos
 
-**Estado:** el protocolo versionado del estado en vivo ya está definido
-y probado ([#11](https://github.com/Lualvarad0/Unisono/issues/11)), pero
-la conducción local-first, el estado de conexión/reconexión y la prueba
-real en dispositivos siguen abiertas en
-[#12–#14](https://github.com/Lualvarad0/Unisono/issues/12). La prueba
+**Estado:** el protocolo versionado del estado en vivo
+([#11](https://github.com/Lualvarad0/Unisono/issues/11)) y la conducción
+local-first del líder ([#12](https://github.com/Lualvarad0/Unisono/issues/12))
+ya están hechos; el estado de conexión/reconexión del seguidor y la
+prueba real en dispositivos siguen abiertas en
+[#13–#14](https://github.com/Lualvarad0/Unisono/issues/13). La prueba
 sirve para observar el comportamiento actual y aportar validación; no
 presupone que los criterios futuros ya estén resueltos.
 
@@ -580,13 +582,15 @@ omisión. Ver tests en `test/models/estado_en_vivo_local_test.dart`.
    una red local sin salida a internet, o modo avión y vuelve a activar
    Bluetooth/Wi-Fi si el fabricante lo permite).
 5. En el teléfono del líder, abre **En vivo**, elige una canción y cambia
-   de sección. Observa si los seguidores muestran los cambios. Como parte
-   de la implementación actual el líder espera a la escritura Firestore,
-   así que la operación puede no avanzar sin internet: anota el resultado,
-   no lo interpretes como una prueba aprobada.
+   de sección. La pantalla del líder ya no espera la escritura de
+   Firestore para abrir o avanzar ([#12](https://github.com/Lualvarad0/Unisono/issues/12));
+   observa si los seguidores reciben el cambio por Nearby. Lo que todavía
+   no está resuelto es que un seguidor que pierda la conexión recupere el
+   snapshot vigente al reconectarse ([#13](https://github.com/Lualvarad0/Unisono/issues/13)):
+   anota el resultado, no lo interpretes como una prueba aprobada de eso.
 6. Recupera internet y observa si Firestore sincroniza las escrituras
-   pendientes. La recuperación de sesión Nearby no está garantizada por
-   el código actual.
+   pendientes del líder. La recuperación de sesión Nearby de un
+   seguidor sigue sin estar garantizada por el código actual — ver #13.
 
 ### Solución de problemas
 
@@ -598,7 +602,7 @@ omisión. Ver tests en `test/models/estado_en_vivo_local_test.dart`.
 | No aparecen equipo, repertorio o actividad | Comprueba que ambas cuentas pertenezcan al mismo `equipoId`, que Firestore esté habilitado y que cada teléfono tenga internet al menos durante la carga inicial. |
 | No llegan notificaciones | Revisa que las Cloud Functions estén desplegadas, permisos de notificación del sistema y token FCM; el cliente por sí solo no genera los avisos del servidor. |
 | Los teléfonos no se descubren | Prueba en dispositivos reales, confirma permisos Bluetooth/ubicación/dispositivos cercanos, mantén Wi-Fi y Bluetooth encendidos y acerca los teléfonos. Nearby no se valida con emulador. |
-| El seguidor no refleja la sección al instante | La tarea de transmisión local-first y reenvío al reconectar está abierta en [#12](https://github.com/Lualvarad0/Unisono/issues/12) y [#13](https://github.com/Lualvarad0/Unisono/issues/13); registra modelo, sistema operativo y si había internet. |
+| El seguidor no refleja la sección al instante | La transmisión local-first del líder ya está hecha ([#12](https://github.com/Lualvarad0/Unisono/issues/12)); el reenvío del snapshot vigente al reconectar sigue abierto en [#13](https://github.com/Lualvarad0/Unisono/issues/13); registra modelo, sistema operativo y si había internet. |
 
 ## Pruebas y automatización
 
@@ -614,6 +618,11 @@ Pruebas que existen actualmente:
 - `test/models/estado_en_vivo_local_test.dart`: protocolo del estado en
   vivo — serialización JSON y la regla de secuencia/sesión que descarta
   duplicados y mensajes atrasados (ver [#11](https://github.com/Lualvarad0/Unisono/issues/11)).
+- `test/services/conexion_local_service_test.dart`: el líder asigna
+  sesión y secuencia al transmitir, un seguidor no transmite nada (ver
+  [#12](https://github.com/Lualvarad0/Unisono/issues/12)). No cubre el
+  plugin Nearby en sí (`ConexionLocalService.iniciar`) — eso necesita
+  dispositivos reales, ver más abajo.
 
 No hay pruebas de integración de Firebase, reglas, notificaciones ni
 Nearby; tampoco pruebas de sincronización multi-dispositivo
@@ -640,7 +649,7 @@ Los enlaces evitan duplicar criterios de aceptación que pueden cambiar:
 |---|---|---|
 | [#10 — Épica: modo en vivo resiliente sin internet](https://github.com/Lualvarad0/Unisono/issues/10) | Conducción offline del líder, reconciliación, recuperación y pruebas reales | La épica describe trabajo pendiente; la implementación actual de Nearby no cumple aún el flujo local-first completo |
 | [#11 — Protocolo versionado](https://github.com/Lualvarad0/Unisono/issues/11) | Sesión, secuencia monotónica, tipo de evento y validación de mensajes | Hecho — ver `EstadoEnVivoLocal` y la sección "Protocolo del estado en vivo" arriba |
-| [#12 — Conducción local-first y reconciliación](https://github.com/Lualvarad0/Unisono/issues/12) | No bloquear cambios por Firestore; definir checkpoint autoritativo | El líder espera a `Repositorio.actualizar` antes de transmitir localmente |
+| [#12 — Conducción local-first y reconciliación](https://github.com/Lualvarad0/Unisono/issues/12) | No bloquear cambios por Firestore; definir checkpoint autoritativo | Hecho — `EnVivoScreen`/`VistaEnVivoScreen` ya no esperan el write de Firestore, y `firestore.rules` restringe la escritura de `actividades` al líder (sin validar contra emulador, ver docs/SEGURIDAD.md) |
 | [#13 — Recuperar seguidores y mostrar sincronización](https://github.com/Lualvarad0/Unisono/issues/13) | Estado de conexión, snapshot actual al reconectar y prueba offline | El código no garantiza reenvío al reconectar ni presenta estado de seguimiento |
 | [#14 — Prueba en dispositivos y documentación offline](https://github.com/Lualvarad0/Unisono/issues/14) | Validar en teléfonos y documentar el resultado | La prueba multi-dispositivo sigue pendiente |
 | [#5 — Ordenar alabanzas recientes](https://github.com/Lualvarad0/Unisono/issues/5) | Orden por fecha de carga | Planeado |
