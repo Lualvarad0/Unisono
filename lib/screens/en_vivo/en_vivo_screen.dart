@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -37,7 +40,8 @@ class EnVivoScreen extends StatelessWidget {
     final futuras = actividades.where((a) => a.fecha.isAfter(ahora)).toList()
       ..sort((a, b) => a.fecha.compareTo(b.fecha));
     if (futuras.isNotEmpty) return futuras.first;
-    final pasadas = [...actividades]..sort((a, b) => b.fecha.compareTo(a.fecha));
+    final pasadas = [...actividades]
+      ..sort((a, b) => b.fecha.compareTo(a.fecha));
     return pasadas.first;
   }
 
@@ -47,11 +51,15 @@ class EnVivoScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('En vivo')),
       body: FutureBuilder<Miembro?>(
-        future: uid == null ? null : context.read<MiembroRepository>().buscarPorUid(uid),
+        future: uid == null
+            ? null
+            : context.read<MiembroRepository>().buscarPorUid(uid),
         builder: (context, snapshotYo) {
-          final esLider = snapshotYo.data?.roles.contains(RolMiembro.lider) ?? false;
+          final esLider =
+              snapshotYo.data?.roles.contains(RolMiembro.lider) ?? false;
           return StreamBuilder<List<Actividad>>(
-            stream: context.read<ActividadRepository>().watchOrdenadasPorFecha(),
+            stream:
+                context.read<ActividadRepository>().watchOrdenadasPorFecha(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
@@ -65,7 +73,8 @@ class EnVivoScreen extends StatelessWidget {
                       'Todavía no hay actividades cargadas.',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                     ),
                   ),
@@ -75,16 +84,19 @@ class EnVivoScreen extends StatelessWidget {
                 stream: context.read<Repositorio<Cancion>>().watchAll(),
                 builder: (context, snapshotCanciones) {
                   final cancionPorId = {
-                    for (final c in snapshotCanciones.data ?? const <Cancion>[]) c.id: c,
+                    for (final c in snapshotCanciones.data ?? const <Cancion>[])
+                      c.id: c,
                   };
                   return StreamBuilder<List<Miembro>>(
                     stream: context.read<Repositorio<Miembro>>().watchAll(),
                     builder: (context, snapshotMiembros) {
                       final nombrePorMiembroId = {
-                        for (final m in snapshotMiembros.data ?? const <Miembro>[])
+                        for (final m
+                            in snapshotMiembros.data ?? const <Miembro>[])
                           m.id: m.nombre,
                       };
-                      final conexionLocal = context.read<ConexionLocalService>();
+                      final conexionLocal =
+                          context.read<ConexionLocalService>();
                       return StreamBuilder<EstadoEnVivoLocal>(
                         initialData: conexionLocal.ultimoEstado(actividad.id),
                         stream: conexionLocal.estados
@@ -100,7 +112,8 @@ class EnVivoScreen extends StatelessWidget {
                                   cancionActivaId: estadoLocal.cancionActivaId,
                                   limpiarCancionActiva:
                                       estadoLocal.cancionActivaId == null,
-                                  seccionActivaIndice: estadoLocal.seccionActivaIndice,
+                                  seccionActivaIndice:
+                                      estadoLocal.seccionActivaIndice,
                                 );
                           return _Contenido(
                             actividad: actividadEfectiva,
@@ -138,14 +151,34 @@ class _Contenido extends StatelessWidget {
   final Map<String, String> nombrePorMiembroId;
   final ConexionLocalService conexionLocal;
 
+  /// Guarda el checkpoint en Firestore sin que nadie espere por esto: es
+  /// la escritura que puede quedar pendiente sin internet (ver doc de
+  /// `ConexionLocalService.transmitir`), así que nunca debe bloquear ni
+  /// la navegación ni la transmisión local, que sí son inmediatas.
+  void _persistirEnFirestore(BuildContext context, Actividad nuevoEstado) {
+    unawaited(
+      context
+          .read<Repositorio<Actividad>>()
+          .actualizar(actividad.id, nuevoEstado)
+          .catchError(
+        (Object error) {
+          if (kDebugMode) {
+            debugPrint('EnVivoScreen: escritura Firestore pendiente ($error)');
+          }
+        },
+      ),
+    );
+  }
+
   Future<void> _abrir(BuildContext context, String cancionId) async {
     if (esLider) {
-      await context.read<Repositorio<Actividad>>().actualizar(
-            actividad.id,
-            actividad.copyWith(cancionActivaId: cancionId, seccionActivaIndice: 0),
-          );
+      _persistirEnFirestore(
+        context,
+        actividad.copyWith(cancionActivaId: cancionId, seccionActivaIndice: 0),
+      );
       await conexionLocal.transmitir(
-        EstadoEnVivoLocal(actividadId: actividad.id, cancionActivaId: cancionId),
+        actividadId: actividad.id,
+        cancionActivaId: cancionId,
       );
     }
     if (!context.mounted) return;
@@ -161,12 +194,14 @@ class _Contenido extends StatelessWidget {
   }
 
   Future<void> _detener(BuildContext context) async {
-    await context.read<Repositorio<Actividad>>().actualizar(
-          actividad.id,
-          actividad.copyWith(limpiarCancionActiva: true, seccionActivaIndice: 0),
-        );
+    _persistirEnFirestore(
+      context,
+      actividad.copyWith(limpiarCancionActiva: true, seccionActivaIndice: 0),
+    );
     await conexionLocal.transmitir(
-      EstadoEnVivoLocal(actividadId: actividad.id, cancionActivaId: null),
+      actividadId: actividad.id,
+      cancionActivaId: null,
+      tipoEvento: TipoEventoEnVivo.detener,
     );
   }
 
@@ -229,7 +264,8 @@ class _Contenido extends StatelessWidget {
                 final activa = actividad.cancionActivaId == entrada.cancionId;
                 final tono = cancion == null
                     ? null
-                    : transponerTono(cancion.tonoOriginal, entrada.tonoAsignado);
+                    : transponerTono(
+                        cancion.tonoOriginal, entrada.tonoAsignado);
                 return Card(
                   color: activa ? tema.colorScheme.primaryContainer : null,
                   child: ListTile(
@@ -237,12 +273,15 @@ class _Contenido extends StatelessWidget {
                     title: Text(cancion?.titulo ?? 'Canción eliminada'),
                     subtitle: Text([
                       if (tono != null) 'Tono $tono',
-                      nombrePorMiembroId[entrada.cantanteId] ?? 'Sin cantante asignado',
+                      nombrePorMiembroId[entrada.cantanteId] ??
+                          'Sin cantante asignado',
                     ].join(' · ')),
                     trailing: activa
                         ? Icon(Icons.sensors, color: tema.colorScheme.primary)
                         : const Icon(Icons.chevron_right),
-                    onTap: cancion == null ? null : () => _abrir(context, cancion.id),
+                    onTap: cancion == null
+                        ? null
+                        : () => _abrir(context, cancion.id),
                   ),
                 );
               },

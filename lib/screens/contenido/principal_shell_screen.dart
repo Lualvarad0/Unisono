@@ -16,11 +16,12 @@ import 'package:app_alabanzas/services/sync_local/permisos_sync_local.dart';
 /// Contenedor con la barra inferior de navegación (Inicio, Repertorio, En
 /// vivo, Setlists, Perfil) — lo primero que se ve después de Acceso.
 ///
-/// "En vivo" transmite con lo que ya hay (Firestore en tiempo real) en
-/// vez de la Capa 2 P2P — ver doc de `VistaEnVivoScreen` y de
-/// `Actividad.cancionActivaId`. El prototipo de sync P2P sigue aislado
-/// en `main_prototipo_sync_local.dart`, sin conectar, para el día que
-/// haga falta funcionar sin conexión también acá.
+/// "En vivo" transmite local-first por Nearby (`ConexionLocalService`,
+/// sin depender de internet) y además persiste en Firestore cuando hay
+/// conexión — ver doc de `VistaEnVivoScreen` y la épica #10. El
+/// prototipo P2P original sigue aislado en
+/// `main_prototipo_sync_local.dart`, sin conectar — esta pantalla usa el
+/// servicio real, no ese prototipo.
 class PrincipalShellScreen extends StatefulWidget {
   const PrincipalShellScreen({super.key});
 
@@ -79,7 +80,8 @@ class _PrincipalShellScreenState extends State<PrincipalShellScreen> {
         selectedIndex: _indice,
         onDestinationSelected: (i) => setState(() => _indice = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Inicio'),
+          NavigationDestination(
+              icon: Icon(Icons.home_outlined), label: 'Inicio'),
           NavigationDestination(
             icon: Icon(Icons.library_music_outlined),
             label: 'Repertorio',
@@ -89,7 +91,8 @@ class _PrincipalShellScreenState extends State<PrincipalShellScreen> {
             icon: Icon(Icons.event_note_outlined),
             label: 'Setlists',
           ),
-          NavigationDestination(icon: Icon(Icons.person_outline), label: 'Perfil'),
+          NavigationDestination(
+              icon: Icon(Icons.person_outline), label: 'Perfil'),
         ],
       ),
     );

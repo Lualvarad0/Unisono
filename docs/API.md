@@ -150,9 +150,10 @@ Las cuatro de notificaciones mandan el push a través de
 `tokensDelEquipo(equipoId)`, que lee `fcmToken` de cada `Miembro` de ese
 equipo puntual — nunca cruza equipos.
 
-**Rate limit**: como cualquier integrante autenticado puede escribir en
-`actividades` (lo necesita el líder para armar un setlist), nada impide
-que una escritura repetida dispare el mismo aviso varias veces seguidas.
+**Rate limit**: como el líder puede escribir en `actividades` (armar el
+setlist, iniciar/avanzar el modo en vivo — ver
+[docs/SEGURIDAD.md](SEGURIDAD.md#actividades-la-escritura-la-autoriza-solo-el-líder)),
+nada impide que una escritura repetida dispare el mismo aviso varias veces seguidas.
 `dentroDelLimite(clave)` usa una transacción de Firestore
 (`rateLimitsAvisos/{clave}`) para que un mismo aviso no se repita dentro
 de una ventana de 2 minutos, sin importar cuántas escrituras lo disparen.

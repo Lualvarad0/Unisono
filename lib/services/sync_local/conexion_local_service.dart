@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_nearby_connections_plus/flutter_nearby_connections_plus.dart';
@@ -17,6 +18,17 @@ export 'package:app_alabanzas/models/estado_en_vivo_local.dart';
 class ConexionLocalService {
   ConexionLocalService() : _nearbyService = NearbyService();
 
+  /// Para tests: deja asignar `esLider`/`sesionId` sin pasar por
+  /// `iniciar()` (que habla con el plugin Nearby de verdad, imposible en
+  /// `flutter test`). Nunca llama a `_nearbyService` — `_dispositivos`
+  /// queda vacío, así que `transmitir()` tampoco lo necesita.
+  @visibleForTesting
+  ConexionLocalService.forTesting({bool esLider = false, String? sesionId})
+      : _nearbyService = NearbyService(),
+        _iniciado = true,
+        _esLider = esLider,
+        _sesionId = sesionId ?? (esLider ? _generarSesionId() : null);
+
   /// Debe matchear con `NSBonjourServices` en ios/Runner/Info.plist y
   /// tener 15 caracteres o menos (límite del paquete) — mismo valor que
   /// ya usaba el prototipo, ahí ya está configurado.
@@ -31,6 +43,13 @@ class ConexionLocalService {
   bool _esLider = false;
   List<Device> _dispositivos = const [];
   final _yaInvitados = <String>{};
+
+  /// Generado una vez por sesión de Modo en vivo, solo si este celular es
+  /// líder — es lo que hace que el líder (y solo el líder, mientras dure
+  /// esta sesión) sea la autoridad de la sesión: ver doc de
+  /// `EstadoEnVivoLocal.esMasRecienteQue`.
+  String? _sesionId;
+  int _siguienteSecuencia = 0;
 
   final _estadosController = StreamController<EstadoEnVivoLocal>.broadcast();
   final _ultimoEstadoPorActividad = <String, EstadoEnVivoLocal>{};
@@ -53,6 +72,7 @@ class ConexionLocalService {
     if (_iniciado) return;
     _iniciado = true;
     _esLider = esLider;
+    if (_esLider) _sesionId = _generarSesionId();
 
     final listo = Completer<void>();
     await _nearbyService.init(
@@ -108,11 +128,31 @@ class ConexionLocalService {
     );
   }
 
-  /// Sin efecto si este celular no es el líder — se llama junto con (no
-  /// en vez de) el guardado en Firestore desde `EnVivoScreen` y
-  /// `VistaEnVivoScreen`.
-  Future<void> transmitir(EstadoEnVivoLocal estado) async {
+  /// Transmite un cambio de estado en vivo a quien esté conectado — sin
+  /// efecto si este celular no es el líder. Se llama junto con (no en vez
+  /// de) el guardado en Firestore desde `EnVivoScreen` y
+  /// `VistaEnVivoScreen`, pero sin esperarlo: esta llamada no depende de
+  /// internet, así que no hay que bloquear la UI hasta que Firestore
+  /// conteste (ver épica #10, sub-tarea #12).
+  ///
+  /// El líder (acá, no quien llama) asigna `sesionId` y `secuencia` —
+  /// nunca confía en que alguien se las pase — para que la sesión tenga
+  /// una sola autoridad real. Ver doc de `EstadoEnVivoLocal`.
+  Future<void> transmitir({
+    required String actividadId,
+    String? cancionActivaId,
+    int seccionActivaIndice = 0,
+    TipoEventoEnVivo tipoEvento = TipoEventoEnVivo.cambio,
+  }) async {
     if (!_esLider) return;
+    final estado = EstadoEnVivoLocal(
+      actividadId: actividadId,
+      sesionId: _sesionId ?? '',
+      secuencia: _siguienteSecuencia++,
+      tipoEvento: tipoEvento,
+      cancionActivaId: cancionActivaId,
+      seccionActivaIndice: seccionActivaIndice,
+    );
     _ultimoEstadoPorActividad[estado.actividadId] = estado;
     final mensaje = jsonEncode(estado.toJson());
     for (final dispositivo in _dispositivos) {
@@ -128,5 +168,14 @@ class ConexionLocalService {
     await _mensajeSub?.cancel();
     await _nearbyService.stopAdvertisingPeer();
     await _nearbyService.stopBrowsingForPeers();
+  }
+
+  /// No necesita ser criptográficamente única — solo distinguir sesiones
+  /// de Modo en vivo sucesivas del mismo líder dentro del alcance de
+  /// Nearby (celulares cercanos), nunca entre apps instaladas en todo el
+  /// mundo. Evita sumar una dependencia nueva (`uuid`) solo para esto.
+  static String _generarSesionId() {
+    final aleatorio = Random().nextInt(1 << 32);
+    return '${DateTime.now().microsecondsSinceEpoch}-$aleatorio';
   }
 }
