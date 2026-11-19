@@ -520,11 +520,51 @@ proyecto aparte y no es la aplicación móvil.
 
 ## Probar sincronización local con 2 o más teléfonos
 
-**Estado:** la integración Nearby está en la app, pero las tareas de
-conducción local-first, estado de conexión, reconexión y prueba real aún
-están abiertas en [#10–#14](https://github.com/Lualvarad0/Unisono/issues/10).
-La prueba sirve para observar el comportamiento actual y aportar
-validación; no presupone que los criterios futuros ya estén resueltos.
+**Estado:** el protocolo versionado del estado en vivo ya está definido
+y probado ([#11](https://github.com/Lualvarad0/Unisono/issues/11)), pero
+la conducción local-first, el estado de conexión/reconexión y la prueba
+real en dispositivos siguen abiertas en
+[#12–#14](https://github.com/Lualvarad0/Unisono/issues/12). La prueba
+sirve para observar el comportamiento actual y aportar validación; no
+presupone que los criterios futuros ya estén resueltos.
+
+### Protocolo del estado en vivo (Nearby)
+
+`ConexionLocalService` (`lib/services/sync_local/conexion_local_service.dart`)
+transmite y recibe instancias de `EstadoEnVivoLocal`
+(`lib/models/estado_en_vivo_local.dart`) como JSON, directo entre
+teléfonos por Bluetooth/Wi-Fi Direct — nunca letra ni acordes, que ya
+tienen que estar en caché en cada teléfono:
+
+```json
+{
+  "actividadId": "actividad-123",
+  "sesionId": "uuid-generado-por-lider",
+  "secuencia": 42,
+  "tipoEvento": "snapshot",
+  "cancionActivaId": "cancion-456",
+  "seccionActivaIndice": 2,
+  "emitidoEn": "2026-10-27T18:42:00.000Z"
+}
+```
+
+- `sesionId`: lo genera el líder una vez por sesión de Modo en vivo.
+- `secuencia`: entero monotónico que el líder incrementa en cada cambio
+  dentro de esa sesión.
+- `tipoEvento`: `snapshot` (reenvío del estado vigente a quien se
+  conecta/reconecta), `cambio` (el líder avanzó canción o sección) o
+  `detener` (el líder cortó la transmisión).
+- `emitidoEn`: marca temporal UTC de cuándo se generó el mensaje.
+
+`EstadoEnVivoLocal.esMasRecienteQue` decide si un estado recibido debe
+reemplazar al vigente: dentro de la misma sesión alcanza con comparar
+`secuencia`; entre sesiones distintas (un UUID no tiene orden propio) se
+usa `emitidoEn`, así un mensaje atrasado de una sesión ya vieja no
+sobreescribe una sesión más nueva. Un payload sin `actividadId` (o con
+uno vacío) se trata como malformado y se descarta sin tocar el estado
+vigente; los demás campos son defensivos — un mensaje de un emisor que
+todavía no actualizó el protocolo decodifica igual, con valores por
+omisión. Ver tests en `test/models/estado_en_vivo_local_test.dart`.
 
 1. Usa dos o más teléfonos Android reales, instala la misma compilación
    y configura cada teléfono con el mismo proyecto Firebase.
@@ -571,6 +611,9 @@ Pruebas que existen actualmente:
   formato simple.
 - `test/widget_test.dart`: smoke test de un `MaterialApp` con texto
   placeholder; no inicia la app completa ni conecta a Firebase.
+- `test/models/estado_en_vivo_local_test.dart`: protocolo del estado en
+  vivo — serialización JSON y la regla de secuencia/sesión que descarta
+  duplicados y mensajes atrasados (ver [#11](https://github.com/Lualvarad0/Unisono/issues/11)).
 
 No hay pruebas de integración de Firebase, reglas, notificaciones ni
 Nearby; tampoco pruebas de sincronización multi-dispositivo
@@ -596,7 +639,7 @@ Los enlaces evitan duplicar criterios de aceptación que pueden cambiar:
 | Issue abierto | Tema | Situación observada en el código |
 |---|---|---|
 | [#10 — Épica: modo en vivo resiliente sin internet](https://github.com/Lualvarad0/Unisono/issues/10) | Conducción offline del líder, reconciliación, recuperación y pruebas reales | La épica describe trabajo pendiente; la implementación actual de Nearby no cumple aún el flujo local-first completo |
-| [#11 — Protocolo versionado](https://github.com/Lualvarad0/Unisono/issues/11) | Sesión, secuencia monotónica, tipo de evento y validación de mensajes | El estado actual solo contiene actividad, canción y sección |
+| [#11 — Protocolo versionado](https://github.com/Lualvarad0/Unisono/issues/11) | Sesión, secuencia monotónica, tipo de evento y validación de mensajes | Hecho — ver `EstadoEnVivoLocal` y la sección "Protocolo del estado en vivo" arriba |
 | [#12 — Conducción local-first y reconciliación](https://github.com/Lualvarad0/Unisono/issues/12) | No bloquear cambios por Firestore; definir checkpoint autoritativo | El líder espera a `Repositorio.actualizar` antes de transmitir localmente |
 | [#13 — Recuperar seguidores y mostrar sincronización](https://github.com/Lualvarad0/Unisono/issues/13) | Estado de conexión, snapshot actual al reconectar y prueba offline | El código no garantiza reenvío al reconectar ni presenta estado de seguimiento |
 | [#14 — Prueba en dispositivos y documentación offline](https://github.com/Lualvarad0/Unisono/issues/14) | Validar en teléfonos y documentar el resultado | La prueba multi-dispositivo sigue pendiente |

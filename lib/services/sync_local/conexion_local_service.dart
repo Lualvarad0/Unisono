@@ -1,38 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_nearby_connections_plus/flutter_nearby_connections_plus.dart';
 
-/// Estado de "Modo en vivo" tal como lo transmite el líder por red local
-/// — mismos dos campos que ya vive en `Actividad` (`cancionActivaId`,
-/// `seccionActivaIndice`), pero viajando directo entre celulares cercanos
-/// por Bluetooth/Wi-Fi Direct en vez de por Firestore. No reemplaza a
-/// Firestore (`EnVivoScreen`/`VistaEnVivoScreen` lo usan además de, no en
-/// vez de, el repositorio real): esto es la capa rápida que funciona
-/// aunque no haya internet en el lugar.
-class EstadoEnVivoLocal {
-  const EstadoEnVivoLocal({
-    required this.actividadId,
-    this.cancionActivaId,
-    this.seccionActivaIndice = 0,
-  });
+import 'package:app_alabanzas/models/estado_en_vivo_local.dart';
 
-  final String actividadId;
-  final String? cancionActivaId;
-  final int seccionActivaIndice;
-
-  factory EstadoEnVivoLocal.fromJson(Map<String, dynamic> json) => EstadoEnVivoLocal(
-        actividadId: json['actividadId'] as String? ?? '',
-        cancionActivaId: json['cancionActivaId'] as String?,
-        seccionActivaIndice: (json['seccionActivaIndice'] as num?)?.toInt() ?? 0,
-      );
-
-  Map<String, dynamic> toJson() => {
-        'actividadId': actividadId,
-        'cancionActivaId': cancionActivaId,
-        'seccionActivaIndice': seccionActivaIndice,
-      };
-}
+export 'package:app_alabanzas/models/estado_en_vivo_local.dart';
 
 /// Sincronización P2P de "Modo en vivo" entre celulares cercanos, sin
 /// depender de internet — sale del prototipo aislado del Paso 4
@@ -74,7 +48,8 @@ class ConexionLocalService {
   /// primero que encuentra, sin ninguna pantalla de "elegí a quién
   /// conectarte" — a diferencia del prototipo, esto corre en segundo
   /// plano todo el tiempo que dure la sesión.
-  Future<void> iniciar({required String nombreDispositivo, required bool esLider}) async {
+  Future<void> iniciar(
+      {required String nombreDispositivo, required bool esLider}) async {
     if (_iniciado) return;
     _iniciado = true;
     _esLider = esLider;
@@ -121,8 +96,13 @@ class ConexionLocalService {
           );
           _ultimoEstadoPorActividad[estado.actividadId] = estado;
           _estadosController.add(estado);
-        } catch (_) {
-          // No era un mensaje de estado en vivo — se ignora.
+        } catch (e) {
+          // Payload malformado (no era JSON, o le faltaba `actividadId`):
+          // se descarta sin tocar el estado vigente — ver doc de
+          // `EstadoEnVivoLocal.fromJson`.
+          if (kDebugMode) {
+            debugPrint('ConexionLocalService: mensaje descartado ($e)');
+          }
         }
       },
     );
