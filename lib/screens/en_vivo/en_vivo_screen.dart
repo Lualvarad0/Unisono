@@ -11,6 +11,7 @@ import 'package:app_alabanzas/models/miembro.dart';
 import 'package:app_alabanzas/repositories/actividad_repository.dart';
 import 'package:app_alabanzas/repositories/miembro_repository.dart';
 import 'package:app_alabanzas/screens/actividades/actividad_utils.dart';
+import 'package:app_alabanzas/screens/en_vivo/preparacion_offline_utils.dart';
 import 'package:app_alabanzas/screens/en_vivo/vista_en_vivo_screen.dart';
 import 'package:app_alabanzas/services/autenticacion_service.dart';
 import 'package:app_alabanzas/services/sync_local/conexion_local_service.dart';
@@ -208,6 +209,8 @@ class _Contenido extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
+    final faltantes =
+        entradasSinCancionDisponible(actividad.setlist, cancionPorId);
     return Column(
       children: [
         Padding(
@@ -238,6 +241,16 @@ class _Contenido extends StatelessWidget {
             ],
           ),
         ),
+        if (!esLider)
+          StreamBuilder<EstadoConexionLocal>(
+            initialData: conexionLocal.estadoConexionActual,
+            stream: conexionLocal.estadoConexion,
+            builder: (context, snapshotConexion) => _BannerEstadoConexion(
+              estado: snapshotConexion.data ?? EstadoConexionLocal.desconectado,
+            ),
+          ),
+        if (faltantes.isNotEmpty)
+          _BannerContenidoFaltante(cantidad: faltantes.length),
         if (actividad.setlist.isEmpty)
           Expanded(
             child: Center(
@@ -288,6 +301,88 @@ class _Contenido extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Aviso de que no hay (o se perdió) conexión local con el líder — oculto
+/// mientras `recibiendo`, para no sumar ruido cuando todo está bien. Ver
+/// `ConexionLocalService.estadoConexion` y la épica #10, sub-tarea #13.
+class _BannerEstadoConexion extends StatelessWidget {
+  const _BannerEstadoConexion({required this.estado});
+
+  final EstadoConexionLocal estado;
+
+  @override
+  Widget build(BuildContext context) {
+    if (estado == EstadoConexionLocal.recibiendo) {
+      return const SizedBox.shrink();
+    }
+    final tema = Theme.of(context);
+    final reconectando = estado == EstadoConexionLocal.reconectando;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: tema.colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            reconectando ? Icons.sync_problem : Icons.wifi_off,
+            size: 18,
+            color: tema.colorScheme.onErrorContainer,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              reconectando
+                  ? 'Reconectando con el líder — se conserva la última sección recibida.'
+                  : 'Sin conexión local con el líder — se conserva la última sección recibida.',
+              style: tema.textTheme.bodySmall
+                  ?.copyWith(color: tema.colorScheme.onErrorContainer),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Aviso de que falta contenido para seguir el servicio sin internet — ver
+/// `entradasSinCancionDisponible` y la épica #10, sub-tarea #13.
+class _BannerContenidoFaltante extends StatelessWidget {
+  const _BannerContenidoFaltante({required this.cantidad});
+
+  final int cantidad;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: tema.colorScheme.tertiaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.cloud_off,
+              size: 18, color: tema.colorScheme.onTertiaryContainer),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              cantidad == 1
+                  ? 'Falta 1 canción de este setlist sin conexión — conectate a internet antes del servicio para tenerla disponible.'
+                  : 'Faltan $cantidad canciones de este setlist sin conexión — conectate a internet antes del servicio para tenerlas disponibles.',
+              style: tema.textTheme.bodySmall
+                  ?.copyWith(color: tema.colorScheme.onTertiaryContainer),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

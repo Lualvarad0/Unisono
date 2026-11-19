@@ -126,4 +126,46 @@ void main() {
       expect(deSesionNueva.esMasRecienteQue(vigente), isTrue);
     });
   });
+
+  group('EstadoEnVivoLocal.comoSnapshot', () {
+    test('conserva sesión, secuencia y contenido, cambia el tipo de evento',
+        () {
+      final original = EstadoEnVivoLocal(
+        actividadId: 'actividad-1',
+        sesionId: 'sesion-1',
+        secuencia: 8,
+        tipoEvento: TipoEventoEnVivo.cambio,
+        emitidoEn: DateTime.utc(2026, 1, 1),
+        cancionActivaId: 'cancion-456',
+        seccionActivaIndice: 2,
+      );
+
+      final snapshot = original.comoSnapshot();
+
+      expect(snapshot.tipoEvento, TipoEventoEnVivo.snapshot);
+      expect(snapshot.sesionId, original.sesionId);
+      expect(snapshot.secuencia, original.secuencia);
+      expect(snapshot.emitidoEn, original.emitidoEn);
+      expect(snapshot.cancionActivaId, original.cancionActivaId);
+      expect(snapshot.seccionActivaIndice, original.seccionActivaIndice);
+    });
+
+    test('un snapshot reenviado no gana contra lo que ya se había aceptado',
+        () {
+      final original = EstadoEnVivoLocal(
+        actividadId: 'actividad-1',
+        sesionId: 'sesion-1',
+        secuencia: 8,
+        emitidoEn: DateTime.utc(2026, 1, 1),
+      );
+      final siguiente = EstadoEnVivoLocal(
+        actividadId: 'actividad-1',
+        sesionId: 'sesion-1',
+        secuencia: 9,
+        emitidoEn: DateTime.utc(2026, 1, 1, 0, 0, 1),
+      );
+
+      expect(original.comoSnapshot().esMasRecienteQue(siguiente), isFalse);
+    });
+  });
 }

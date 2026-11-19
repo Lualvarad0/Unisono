@@ -144,35 +144,44 @@ sequenceDiagram
     participant Vista as VistaEnVivoScreen
 
     UI->>Repo: actualizar actividad (canción/sección)
-    Repo->>FS: set del documento de actividad
-    Note over UI,FS: El flujo espera esta operación antes de seguir
-    UI->>Nearby: transmitir EstadoEnVivoLocal
+    Repo->>FS: set del documento de actividad (sin esperarlo)
+    UI->>Nearby: transmitir EstadoEnVivoLocal (sesión+secuencia)
     Nearby-->>Tel: JSON con actividad, canción y sección
+    Note over UI,FS: El write de Firestore sigue en curso aparte; no bloquea el paso anterior
     FS-->>Vista: snapshots() remoto o caché
     Tel-->>Vista: stream local en memoria
     Note over Vista: Si existe estado local recibido, la UI lo usa sobre Firestore
 ```
 
-La integración no equivale todavía a una sesión offline robusta:
+La integración todavía no se validó en dispositivos reales, pero el
+protocolo y la reconciliación de sesión ya están resueltos en código
+([#11–#13](https://github.com/Lualvarad0/Unisono/issues/11)):
 
-- `EstadoEnVivoLocal` no contiene ID de sesión, secuencia ni tipo de
-  evento versionado.
-- Las acciones del líder esperan a que `Repositorio.actualizar` termine
-  antes de transmitir por Nearby. Sin internet, el `Future` de Firestore
-  puede permanecer pendiente; la pantalla no tiene garantizado un
-  avance local-first.
-- El servicio conserva el último estado recibido en memoria, pero no
-  garantiza que retransmita un snapshot cuando un peer se reconecta.
-- No hay UI de estado desconectado/reconectando ni una conciliación
-  explícita entre un estado local y otro remoto atrasado.
-- La pantalla del seguidor depende de tener actividad, setlist y canción
-  localmente disponibles. Nearby no los descarga ni los envía.
+- `EstadoEnVivoLocal` lleva `sesionId`, `secuencia` monotónica,
+  `tipoEvento` y `emitidoEn` — `esMasRecienteQue` descarta duplicados y
+  mensajes atrasados sin depender de un reloj central (#11).
+- El líder ya no espera a `Repositorio.actualizar` para transmitir por
+  Nearby: `EnVivoScreen`/`VistaEnVivoScreen` disparan el write de
+  Firestore sin esperarlo (`unawaited` + log en debug), así que un
+  `Future` que queda pendiente sin internet no bloquea el avance local
+  (#12).
+- `ConexionLocalService` reenvía (`comoSnapshot`) el último estado
+  vigente de cada actividad al dispositivo que se conecta o reconecta, y
+  vuelve a permitir invitar a un seguidor que se había desconectado (#13).
+- `EnVivoScreen` y `VistaEnVivoScreen` muestran el estado de conexión
+  (`desconectado`/`reconectando`/`recibiendo`, vía
+  `ConexionLocalService.estadoConexion`) y avisan si falta en caché
+  alguna canción del setlist (`entradasSinCancionDisponible`) — pero
+  Nearby en sí sigue sin descargar ni transmitir letra/acordes; eso
+  tiene que estar en caché de antemano en cada teléfono (#13).
 - El servicio se inicia en `PrincipalShellScreen` tras resolver el
   miembro y pedir permisos. Debe haber radios cercanas disponibles; el
-  flujo no se valida mediante emulador.
-- Las reglas Firestore dejan a cualquier integrante autenticado del
-  equipo escribir actividades. El rol de líder se aplica en partes de
-  la interfaz, no como permiso de servidor para esas escrituras.
+  flujo no se valida mediante emulador — eso es lo que cubre
+  [#14](https://github.com/Lualvarad0/Unisono/issues/14).
+- Las reglas Firestore (`firestore.rules`) ya restringen la escritura de
+  `actividades` al miembro con rol líder del equipo (`esLiderDeEquipo`),
+  no a cualquier integrante autenticado — sin validar contra el
+  emulador, ver [SEGURIDAD.md](SEGURIDAD.md).
 
 ### Estados de conexión
 
@@ -186,17 +195,22 @@ stateDiagram-v2
     Descubriendo --> BuscandoLider: otro miembro
     LiderAnunciando --> NearbyConectado: peer invitado/conectado
     BuscandoLider --> NearbyConectado: encuentra al líder
-    NearbyConectado --> NearbyConectado: recibe estado
-    NearbyConectado --> SinGarantiaDeRecuperacion: se pierde el peer
-    SinGarantiaDeRecuperacion --> BuscandoLider: reinicio/re-descubrimiento no garantizado
+    NearbyConectado --> NearbyConectado: recibe estado (recibiendo)
+    NearbyConectado --> Reconectando: se pierde el peer
+    Reconectando --> BuscandoLider: vuelve a invitar/buscar automáticamente
+    BuscandoLider --> NearbyConectado: reconecta y recibe el snapshot vigente
     SoloFirestore --> FirestoreOffline: Firestore sirve caché
     FirestoreOffline --> FirestoreOnline: vuelve internet y SDK sincroniza
     FirestoreOnline --> SoloFirestore: Firestore vuelve a caché
 ```
 
-La recuperación de peer, el indicador de sincronización y la política
-local-first/reconciliación pertenecen a los issues abiertos [#11–#14](https://github.com/Lualvarad0/Unisono/issues/11).
-La épica completa es [#10](https://github.com/Lualvarad0/Unisono/issues/10).
+`ConexionLocalService.estadoConexion` (`EstadoConexionLocal`) expone
+`desconectado`/`reconectando`/`recibiendo` tal como los distingue este
+diagrama; `EnVivoScreen`/`VistaEnVivoScreen` lo muestran en pantalla
+([#13](https://github.com/Lualvarad0/Unisono/issues/13)). Falta validar
+este flujo en dispositivos reales —
+[#14](https://github.com/Lualvarad0/Unisono/issues/14). La épica
+completa es [#10](https://github.com/Lualvarad0/Unisono/issues/10).
 
 ### Permisos de red local
 
@@ -220,14 +234,16 @@ La autenticación es Firebase Auth por correo y contraseña. Las reglas
 Firestore aíslan subcolecciones por equipo y la callable
 `buscarEquipoPorCodigo` evita listar la colección completa de equipos.
 Revisa [SEGURIDAD.md](SEGURIDAD.md) para hallazgos y limitaciones
-conocidas, incluida la autorización de escrituras de actividad por
-cualquier miembro autenticado.
+conocidas, incluida la restricción de escrituras de `actividades` al
+rol líder (sin validar contra el emulador).
 
 ## Pruebas y estado de validación
 
 Las pruebas Dart/Flutter actuales están en `test/`; cubren acordes,
-parser ChordPro, editor simple y un widget placeholder. No hay tests de
-Firebase, reglas, Cloud Functions ni sincronización Nearby automatizados.
+parser ChordPro, editor simple, el protocolo/servicio del modo en vivo
+local (`EstadoEnVivoLocal`, `ConexionLocalService`), el aviso de
+contenido faltante sin conexión, y un widget placeholder. No hay tests
+de Firebase, reglas, Cloud Functions ni del plugin Nearby en sí.
 Los workflows de CI ejecutan `flutter analyze` y `flutter test`; la
 prueba en teléfonos reales está en el alcance del issue
 [#14](https://github.com/Lualvarad0/Unisono/issues/14).

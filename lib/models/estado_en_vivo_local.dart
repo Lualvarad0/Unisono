@@ -128,6 +128,22 @@ class EstadoEnVivoLocal extends Equatable {
     return emitidoEn.isAfter(vigente.emitidoEn);
   }
 
+  /// Copia de este estado marcada como [TipoEventoEnVivo.snapshot] — mismo
+  /// contenido y la misma `secuencia`/`emitidoEn` originales, para que
+  /// [esMasRecienteQue] lo siga ordenando igual que al mensaje del que
+  /// viene. La usa `ConexionLocalService` para poner al día a quien se
+  /// conecta o reconecta, sin que ese reenvío se confunda con un avance
+  /// nuevo (épica #10, sub-tarea #13).
+  EstadoEnVivoLocal comoSnapshot() => EstadoEnVivoLocal(
+        actividadId: actividadId,
+        sesionId: sesionId,
+        secuencia: secuencia,
+        tipoEvento: TipoEventoEnVivo.snapshot,
+        emitidoEn: emitidoEn,
+        cancionActivaId: cancionActivaId,
+        seccionActivaIndice: seccionActivaIndice,
+      );
+
   @override
   List<Object?> get props => [
         actividadId,
