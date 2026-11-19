@@ -262,6 +262,21 @@ usa una transacción de Firestore para que un mismo aviso (misma
 minutos, sin importar cuántas escrituras lo disparen. Ver
 [API.md § Cloud Functions](API.md#cloud-functions).
 
+`importarCancionLacuerda` (issue [#26](https://github.com/Lualvarad0/Unisono/issues/26))
+usa el mismo `intentosPermitidos()` con clave por `uid`: 20 intentos
+cada 10 minutos, para que la función no se use como vía para pegarle
+tráfico repetido a `acordes.lacuerda.net` a nombre de la app. También
+rechaza cualquier URL que no sea `https://acordes.lacuerda.net/...`
+antes de descargar nada — no es un proxy genérico.
+
+**Contenido de terceros**: la letra y los acordes que trae
+`importarCancionLacuerda` son transcripciones de lacuerda.net, no
+contenido propio de Unísono — ver el aviso legal que esa página
+muestra en cada canción ("para exclusivo uso privado... se prohibe su
+reproducción o retransmisión"). Pensado para el uso interno de un
+equipo de alabanza (el mismo que ya hace cualquiera que transcribe una
+canción a mano), no para redistribuir ese contenido fuera de la app.
+
 ## 🗝️ Manejo de secretos
 
 Ningún archivo de configuración de Firebase ni ninguna clave se comitea:

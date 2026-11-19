@@ -5,11 +5,16 @@ import 'package:app_alabanzas/core/firestore/repositorio.dart';
 import 'package:app_alabanzas/core/genero_colores.dart';
 import 'package:app_alabanzas/models/artista.dart';
 import 'package:app_alabanzas/models/cancion.dart';
+import 'package:app_alabanzas/models/miembro.dart';
 import 'package:app_alabanzas/models/ritmo.dart';
+import 'package:app_alabanzas/repositories/miembro_repository.dart';
 import 'package:app_alabanzas/screens/contenido/detectar_tonalidad_screen.dart';
 import 'package:app_alabanzas/screens/contenido/editor_chordpro_screen.dart';
 import 'package:app_alabanzas/screens/contenido/editor_simple_screen.dart';
+import 'package:app_alabanzas/services/autenticacion_service.dart';
+import 'package:app_alabanzas/services/importar_lacuerda_service.dart';
 import 'package:app_alabanzas/widgets/chip_genero.dart';
+import 'package:app_alabanzas/widgets/dialogo_importar_url.dart';
 import 'package:app_alabanzas/widgets/dialogo_nuevo_genero.dart';
 import 'package:app_alabanzas/widgets/encabezado_seccion.dart';
 
@@ -63,6 +68,8 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
   late final List<String> _etiquetas = [...?widget.cancionExistente?.etiquetas];
   late String? _ritmoId = widget.cancionExistente?.ritmoId;
   bool _guardando = false;
+  bool _esLider = false;
+  bool _importando = false;
 
   bool get _editando => widget.cancionExistente != null;
 
@@ -70,8 +77,54 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
   void initState() {
     super.initState();
     _sembrarGenerosPorDefecto();
+    _cargarEsLider();
     final artistaId = widget.cancionExistente?.artistaId;
     if (artistaId != null) _cargarNombreArtista(artistaId);
+  }
+
+  Future<void> _cargarEsLider() async {
+    final uid = context.read<AutenticacionService>().usuarioActual?.uid;
+    if (uid == null) return;
+    final miembro = await context.read<MiembroRepository>().buscarPorUid(uid);
+    if (!mounted) return;
+    setState(
+        () => _esLider = miembro?.roles.contains(RolMiembro.lider) ?? false);
+  }
+
+  /// Issue #26 — solo el líder ve el botón; igual queda cubierto del lado
+  /// del servidor (la Cloud Function rechaza a quien no sea líder), así
+  /// que esto es solo para no mostrar algo que va a fallar.
+  Future<void> _importarDesdeLacuerda() async {
+    final url = await showDialog<String>(
+      context: context,
+      builder: (_) => const DialogoImportarUrl(),
+    );
+    if (url == null || url.trim().isEmpty || !mounted) return;
+    setState(() => _importando = true);
+    try {
+      final importada =
+          await ImportarLacuerdaService().importarDesdeUrl(url.trim());
+      if (!mounted) return;
+      setState(() {
+        _tituloController.text = importada.titulo;
+        _artistaController.text = importada.artista;
+        _contenidoChordPro = importada.contenidoChordPro;
+        if (importada.tono != null && importada.tono!.isNotEmpty) {
+          _tono = importada.tono!;
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text(
+                'Importado — revisá título, tono y letra antes de guardar.')),
+      );
+    } on ImportarLacuerdaExcepcion catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.mensaje)));
+    } finally {
+      if (mounted) setState(() => _importando = false);
+    }
   }
 
   Future<void> _cargarNombreArtista(String artistaId) async {
@@ -316,6 +369,23 @@ class _AgregarAlabanzaScreenState extends State<AgregarAlabanzaScreen> {
               decoration:
                   const InputDecoration(labelText: 'Artista / Ministerio'),
             ),
+            if (_esLider) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _importando ? null : _importarDesdeLacuerda,
+                  icon: _importando
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.download_outlined, size: 18),
+                  label: const Text('Importar desde lacuerda.net'),
+                ),
+              ),
+            ],
             const SizedBox(height: 28),
             const EncabezadoSeccion('DETALLES MUSICALES'),
             const SizedBox(height: 12),
