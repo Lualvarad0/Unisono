@@ -655,20 +655,15 @@ Los enlaces evitan duplicar criterios de aceptación que pueden cambiar:
 
 | Issue abierto | Tema | Situación observada en el código |
 |---|---|---|
-| [#10 — Épica: modo en vivo resiliente sin internet](https://github.com/Lualvarad0/Unisono/issues/10) | Conducción offline del líder, reconciliación, recuperación y pruebas reales | La épica describe trabajo pendiente; la implementación actual de Nearby no cumple aún el flujo local-first completo |
-| [#11 — Protocolo versionado](https://github.com/Lualvarad0/Unisono/issues/11) | Sesión, secuencia monotónica, tipo de evento y validación de mensajes | Hecho — ver `EstadoEnVivoLocal` y la sección "Protocolo del estado en vivo" arriba |
-| [#12 — Conducción local-first y reconciliación](https://github.com/Lualvarad0/Unisono/issues/12) | No bloquear cambios por Firestore; definir checkpoint autoritativo | El líder espera a `Repositorio.actualizar` antes de transmitir localmente |
-| [#13 — Recuperar seguidores y mostrar sincronización](https://github.com/Lualvarad0/Unisono/issues/13) | Estado de conexión, snapshot actual al reconectar y prueba offline | El código no garantiza reenvío al reconectar ni presenta estado de seguimiento |
-| [#14 — Prueba en dispositivos y documentación offline](https://github.com/Lualvarad0/Unisono/issues/14) | Validar en teléfonos y documentar el resultado | La prueba multi-dispositivo sigue pendiente |
-| [#5 — Ordenar alabanzas recientes](https://github.com/Lualvarad0/Unisono/issues/5) | Orden por fecha de carga | Planeado |
-| [#6 — Buscar por artista y etiquetas](https://github.com/Lualvarad0/Unisono/issues/6) | Búsqueda del repertorio | Planeado |
-| [#7 — Filtrar actividades](https://github.com/Lualvarad0/Unisono/issues/7) | Actividades próximas y anteriores | Planeado |
-| [#8 — Favoritas personales](https://github.com/Lualvarad0/Unisono/issues/8) | Favoritos por usuario | Planeado |
-| [#9 — Duplicar actividad](https://github.com/Lualvarad0/Unisono/issues/9) | Crear actividad reutilizando setlist | Planeado |
+| [#10 — Épica: modo en vivo resiliente sin internet](https://github.com/Lualvarad0/Unisono/issues/10) | Conducción offline del líder, reconciliación, recuperación y pruebas reales | #11 y #13 ya mergeadas; quedan #12 y #14 (ver abajo) antes de cerrar la épica |
+| [#12 — Conducción local-first y reconciliación](https://github.com/Lualvarad0/Unisono/issues/12) | No bloquear cambios por Firestore; definir checkpoint autoritativo | Código mergeado (líder local-first, `firestore.rules` restringe el estado en vivo al líder) — falta probar esa regla contra el emulador de Firestore, bloqueado acá por versión de Java |
+| [#14 — Prueba en dispositivos y documentación offline](https://github.com/Lualvarad0/Unisono/issues/14) | Validar en teléfonos y documentar el resultado | Prueba de integración con transporte simulado mergeada — falta la validación manual en Android físico y registrar el resultado en el issue |
+| [#26 — Importar canción desde lacuerda.net](https://github.com/Lualvarad0/Unisono/issues/26) | Traer letra y acordes de una URL en vez de transcribirlos a mano | Hecho — ver "Cloud Functions" en [docs/API.md](docs/API.md); abierto solo para sumar otros sitios de acordes si hace falta |
 
-Los issues [#11–#14](https://github.com/Lualvarad0/Unisono/issues/11)
-son subtareas de la épica #10; no son funcionalidades que deban
-considerarse terminadas por aparecer en la app.
+Los issues #11 y #13 (subtareas de la épica #10) y #5–#9 ya están
+cerrados y mergeados — ver la tabla de
+["Funcionalidades y roles"](#funcionalidades-y-roles) arriba, no
+figuran acá porque este listado es solo lo que sigue abierto.
 
 ## Contribuir
 
